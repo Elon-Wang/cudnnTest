@@ -5,3 +5,4 @@ netTest/cudnn-mnist-training/*
 netTest/cudnn_test_0124/VGG/binImage/*
 netTest/cudnn_test_0124/VGG/vggData/*
 netTest/cudnn_sample_modified/mnistCUDNN/data_bak/*
+**/*.out
