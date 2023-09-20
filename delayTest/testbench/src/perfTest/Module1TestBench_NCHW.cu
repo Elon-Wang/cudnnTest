@@ -24,7 +24,7 @@ int main(){
     // orig orig_fun;
     // orig_fun.testValid(*teCase[0]);
     // orig_fun.testPerformance(*teCase[0]);
-    new3 fun1;
+    new4 fun1;
     fun1.testValid(*teCase[0]);
     fun1.testPerformance(*teCase[0]);
 
