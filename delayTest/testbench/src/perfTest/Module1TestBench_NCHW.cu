@@ -38,7 +38,7 @@ int main(){
     // need to test the performance of the different dims     
     
     // for(int i=1; false; i++) {
-        int i=2;
+        int i=8;
         printf("i:%d\n",i);
     //     // test available
     //     // an array to get the availability;

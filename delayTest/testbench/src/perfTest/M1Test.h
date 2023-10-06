@@ -9,7 +9,7 @@ __global__ void wino_input_trans_nchw_suitFor128_new2(int side, int side_beta, i
 __global__ void wino_input_trans_nchw_suitFor128_new3(int side, int side_beta, int MSize, int KSize, int padding, int numOfChn, int numOfBlockn, int blockn_beta, float * pinputs, float* pOutputs);
 __global__ void wino_input_trans_nchw_suitFor128_new4(int side, int side_beta, int MSize, int KSize, int padding, int blockn_beta, float * pinputs, float* pOutputs);
 __global__ void wino_input_trans_nchw_suitFor128_new5(int side, int side_beta, int MSize, int KSize, int padding, int numOfChn, int numOfBlockn, int blockn_beta, float * pinputs, float* pOutputs);
-__global__ void wino_input_trans_nchw_suitFor128_new6(int side, int side_beta, int MSize, int KSize, int padding, int numOfChn, int numOfBlockn, float * pinputs, float* pOutputs);
+__global__ void wino_input_trans_nchw_suitFor128_new6(int side, int side_beta, int MSize, int KSize, int padding, int numOfChn, int numOfBlockn, int blockn_beta, float * pinputs, float* pOutputs);
 
 class inputTransMethod{
 
@@ -136,7 +136,7 @@ class orig : public inputTransMethod{
 class new1 : public inputTransMethod{
     public:
     new1(){
-        minSide = 34;
+        minSide = 6;
         maxSide = 69632;
         maxBatch = 65535;
         maxChannel = 512000;
@@ -153,7 +153,7 @@ class new2 : public inputTransMethod{
     public:
     new2(){
         maxChannel = 1024;
-        minSide = 34;
+        minSide = 6;
         maxSide = 65535;
         maxBatch = 65535;
         strcpy(outFileName, "./data/M1_new2.bin");
@@ -167,7 +167,7 @@ class new3 : public inputTransMethod{
     public:
     new3(){
         maxChannel = 65535;
-        minSide = 34;
+        minSide = 6;
         maxSide = 65535;
         maxBatch = 65535;
         strcpy(outFileName, "./data/M1_new3.bin");
@@ -183,7 +183,7 @@ class new4 : public inputTransMethod{
     public:
     new4(){
         maxChannel = 65535;
-        minSide = 34;
+        minSide = 6;
         maxSide = 65535;
         maxBatch = 65535;
         strcpy(outFileName, "./data/M1_new4.bin");
@@ -198,7 +198,7 @@ class new5 : public inputTransMethod{
     public:
     new5(){
         maxChannel = 65535;
-        minSide = 34;
+        minSide = 6;
         maxSide = 65535;
         maxBatch = 65535;
         strcpy(outFileName, "./data/M1_new5.bin");
@@ -215,7 +215,7 @@ class new6 : public inputTransMethod{
     public:
     new6(){
         maxChannel = 65535;
-        minSide = 18;
+        minSide = 6;
         maxSide = 65535;
         maxBatch = 65535;
         strcpy(outFileName, "./data/M1_new6.bin");
@@ -224,7 +224,7 @@ class new6 : public inputTransMethod{
         int blockn_makeup= (blockn%4) ? (blockn+4 - blockn%4): blockn;
         // printf("blockn:%d, blockn_makeup:%d\n", blockn, blockn_makeup);
         int chn_makeup = (tc.chn%4)? (tc.chn+4-tc.chn%4):tc.chn;
-        wino_input_trans_nchw_suitFor128_new6<<<dim3(tc.bat4Conv,(blockn_makeup*blockn_makeup/16),chn_makeup/4),dim3(4,4,4)>>>(tc.inside, inside_beta, MSize, KSize, padding, tc.chn, blockn, tc.input_gpu, inputTran_gpu);
+        wino_input_trans_nchw_suitFor128_new6<<<dim3(tc.bat4Conv,(blockn_makeup*blockn_makeup/16),chn_makeup/4),dim3(4,4,4)>>>(tc.inside, inside_beta, MSize, KSize, padding, tc.chn, blockn, (blockn_makeup/4), tc.input_gpu, inputTran_gpu);
     }
 };
 
@@ -768,7 +768,7 @@ __global__ void wino_input_trans_nchw_suitFor128_new5(int side, int side_beta, i
 
 // find the parallalism both in channel dims and spatial dims & preload data into the shared cache
 // wino_input_trans_nchw_suitFor128_new6<<<dim3(bat4Conv, blockn*blockn/(16), chn/4),dim3(4,4,4), (inside*inside*8*4) >>>();
-__global__ void wino_input_trans_nchw_suitFor128_new6(int side, int side_beta, int MSize, int KSize, int padding, int numOfChn, int numOfBlockn, float * pInputs, float* pOutputs){
+__global__ void wino_input_trans_nchw_suitFor128_new6(int side, int side_beta, int MSize, int KSize, int padding, int numOfChn, int numOfBlockn, int blockn_beta, float * pInputs, float* pOutputs){
     int tidx = threadIdx.x;  // 0-4,
     int tidy = threadIdx.y;  // 0-4
     int tidz = threadIdx.z;  // 0-4
@@ -776,21 +776,41 @@ __global__ void wino_input_trans_nchw_suitFor128_new6(int side, int side_beta, i
     int bidy = blockIdx.y;   // blockn by 16
     int bidz = blockIdx.z;   // chn by 4
 
-    if(tidz+bidz*4 >= numOfChn){
-        return;
-    }
-
+    int inside = side;
     int totalChn = numOfChn;
     int numOfBatch = gridDim.x;
     int blockn = numOfBlockn;
     // int blockn = 1+(inside -6)/4;
 
-    float Mread[6][6] = {{0}};
-
-    int inside = side;
-
     int blocknX = bidy % ((blockn+3)/4);
     int blocknY = bidy / ((blockn+3)/4);
+
+
+    // if (tidx ==2 && tidy ==0 && tidz ==0 && bidx==0 && bidz==0 && bidy ==3){
+    //     // for( int i =0;i<6;i++) {
+    //     //     for (int j=0; j<6;j++) {
+    //     //         // if ((4*bidy + j >= padding)&&( 4*bidz +i >= padding)&&(4*bidy + j <=inside-1+padding) && (4*bidz +i <= inside-1 +padding)) {
+    //     //             // printf("%f  ",Mread [i][j]);
+    //     //             printf("(%d,%d,%d,address:%d)  ",(4*bidy+j),(4*bidz+i),(4*bidy + j >= padding)&&( 4*bidz +i >= padding)&&(4*bidy + j <=inside-1+padding) && (4*bidz +i <= inside-1 +padding),(bidy*4 + bidz*4*inside + bidx* inside *inside + tidx* totalChn*inside*inside - padding *(1+inside)+j + i * inside));
+    //     //     }printf("\n");
+    //     // }
+    //     printf("blockn_beta:%d blockn:%d\n",blockn_beta, blockn);
+    //     printf("blocknX:%d\n",blocknX);
+    // }
+
+    if (blocknX == blockn_beta-1 || blocknY ==blockn_beta -1) {
+        if ((blocknX*4 + tidx >=blockn) || (blocknY*4 + tidy>=blockn)){
+            return;
+        }
+    }
+
+    if(tidz+bidz*4 >= numOfChn){
+        return;
+    }
+
+    float Mread[6][6] = {{0}};
+
+
 
     pInputs = &pInputs[tidx*4 +tidy*4*inside + tidz*inside*inside + bidx*inside*inside*totalChn+ blocknX*16 +blocknY*16*inside + bidz*inside*inside*4 - padding*(1+inside)];
 
