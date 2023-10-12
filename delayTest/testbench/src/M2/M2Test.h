@@ -14,16 +14,17 @@ public:
     int NSize, KSize;
     bool NCheck, KCheck;
 
-    float kernelTran_cpu;
-    float kernelTran_gpu;
+    float *kernelTran_cpu;
+    float *kernelTran_gpu;
     char outFileName[30] = "default_Name.bin";
 
+    float singleTime;
     float minDelay;
     bool valid = false;
     bool testValid(testCase tc);
     float testPerformance(testCase tc);
     virtual void execut(testCase tc)=0 ;
-}
+};
 
 bool kernelTranMethod::testValid(testCase tc){
     if(tc.numOfFilter >= min_numOfFilter && tc.numOfFilter <= max_numOfFilter && tc.chn ){
@@ -76,11 +77,13 @@ public:
         max_numOfFilter = 65525;
         min_chn = 1;
         max_chn = 65525;
+        strcpy(outFileName, "./data/M2_new0.bin");
     }
     virtual void execut(testCase tc) {
+        // printf("%d %d\n",tc.chn, tc.numOfFilter);
         wino_kernel_trans_nchw_suitFor128<<<dim3(tc.chn,1,1),dim3(tc.numOfFilter,1,1)>>>(NSize, KSize, tc.kernel_gpu, kernelTran_gpu);
     }
-}
+};
 
 
 __global__ void wino_kernel_trans_nchw_suitFor128(int NSize, int KSize, float * pInputs, float* pOutputs){
@@ -113,6 +116,11 @@ __global__ void wino_kernel_trans_nchw_suitFor128(int NSize, int KSize, float * 
     }
 
     int size = NSize * KSize;
+
+    // if (bid==0 && tidx ==  16) {
+    //     printf("input pos:%d\n",tidx*3*3*gridDim.x + bid *3*3);
+    //     printf("val:%f\n",pInputs[tidx*3*3*gridDim.x + bid *3*3]);
+    // }
 
     for(int i=0;i<6;i++){
         pOutputs[i*6*size] = Gg[i][0]/4;

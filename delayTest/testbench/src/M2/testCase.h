@@ -10,8 +10,8 @@ public:
 
     char kernelName[60];
 
-    testCase(char* fileName, int batch, int channel ){
-        numOfFilter = batch;
+    testCase(char* fileName, int size, int batch, int channel, int channel_NextLevel){
+        numOfFilter = channel_NextLevel;
         chn = channel;
         strcpy(kernelName, fileName);
 
@@ -19,6 +19,6 @@ public:
         kernel_cpu = get_parameter(kernelName, nKernel);
         
         cudaMalloc((void **) &kernel_gpu, nKernel<<2);
-        cudaMemcpy(kernel_gpu, kernel_cpu, nKernel, cudaMemcpyHostToDevice);
+        cudaMemcpy(kernel_gpu, kernel_cpu, nKernel<<2, cudaMemcpyHostToDevice);
     }
-}
+};

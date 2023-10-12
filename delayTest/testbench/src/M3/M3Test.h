@@ -19,7 +19,7 @@ class GEMM_Method{
 
     int bat4Gemm =36;
     int M, N, K;
-    int MCheck, NCheck, KCheck;
+    // bool MCheck, NCheck, KCheck;
     int MSize, NSize, KSize;
     int blockx, blocky;
 
@@ -42,13 +42,13 @@ class GEMM_Method{
     bool testValid(testCase tc);
     float testPerformance(testCase tc);
     virtual void execut(testCase tc) =0 ;
-    inputTransMethod(){
+    GEMM_Method(){
         // minSide = 4;
         // maxSide = 1024;
         // maxChannel = 512;
         // maxBatch = 1024;
         min_M = 128;
-        max_M = 128;
+        max_M = 65000;
         min_K = 4;
         min_N = 128;
         max_K = 65000;
@@ -61,18 +61,20 @@ bool GEMM_Method::testValid(testCase tc){
     M = tc.M;
     N = tc.N;
     K = tc.K;
-    MCheck = ( M % 128 == 0 )? true: false;
-    NCheck = ( N % 128 == 0 )? true: false;
-    KCheck = ( chn % 8 == 0 )? true: false;
-    MSize = MCheck? M: ((M/128 +1) * 128);
-    NSize = NCheck? N: ((N/128 +1) * 128);
-    KSize = KCheck? chn: ((chn/8 +1) * 8);
-
-    
-    if(tc.M >= min_M && tc.M <=max_M && tc.N >= min_N&& tc.N <= max_N && tc.K >= min_K && tc.K <= max_K) {
-        blockx = (M+127)/128;
-        blocky = (N+127)/128;
-        nGemmOutput = 36*M*N;
+    // MCheck = ( M % 128 == 0 )? true: false;
+    // NCheck = ( N % 128 == 0 )? true: false;
+    // KCheck = ( K % 8 == 0 )? true: false;
+    // MSize = MCheck? M: ((M/128 +1) * 128);
+    // NSize = NCheck? N: ((N/128 +1) * 128);
+    // KSize = KCheck? K: ((chn/8 +1) * 8);
+    MSize  = tc.MSize;
+    NSize  = tc.NSize;
+    KSize  = tc.KSize;
+    printf("MSize:%d NSize:%d KSize:%d\n",MSize,NSize,KSize);
+    if(MSize >= min_M && MSize <=max_M && NSize >= min_N&& NSize <= max_N && KSize >= min_K && KSize <= max_K) {
+        blockx = (MSize+127)/128;
+        blocky = (NSize+127)/128;
+        nGemmOutput = 36*MSize*NSize;
         cudaMalloc((void **) &gemmOutput_gpu, nGemmOutput<<2);
         gemmOutput_cpu = (float *)malloc(nGemmOutput *sizeof(float));
 
@@ -100,7 +102,7 @@ float GEMM_Method::testPerformance(testCase tc){
     cudaEventDestroy(start1);
     cudaEventDestroy(stop1);
 
-    cudaMemcpy( gemmOutput_cpu, gemmOutput_gpu, nGemmOutput, cudaMemcpyDeviceToHost);
+    cudaMemcpy( gemmOutput_cpu, gemmOutput_gpu, nGemmOutput<<2, cudaMemcpyDeviceToHost);
     printf("first element:%f\n",gemmOutput_cpu[0]);
     save_parameter(outFileName, nGemmOutput, gemmOutput_cpu);
 
@@ -109,7 +111,10 @@ float GEMM_Method::testPerformance(testCase tc){
 
 class new0 : public GEMM_Method{
     public:
+    new0(){
+        strcpy(outFileName, "./data/M3_new0.bin");
+    }
     virtual void execut(testCase tc){
         GEMM_batch_256_128x128_KMKN<<<dim3(blockx, blocky, bat4Gemm), dim3(256,1,1)>>> (MSize,NSize,KSize,1, tc.inputTran_gpu, tc.kernelTran_gpu,0, gemmOutput_gpu);
     }
-}
+};

@@ -3,9 +3,21 @@
 int main(){
 
     testCase* teCase[9];
-    char fileName =  "../../data/kernel.bin";
+    char fileName[] =  "./data/kernel.bin";
 
-    teCase[0] = new testCase(fileName, );   //TODO: more parameters
+    teCase[0] = new testCase(fileName, 224, 1, 1, 64);      // size, batch, chn
+    teCase[1] = new testCase(fileName, 224, 1, 64, 64);
+
+    teCase[2] = new testCase(fileName, 112, 1, 64, 128);
+    teCase[3] = new testCase(fileName, 112, 1, 128, 128);
+
+    teCase[4] = new testCase(fileName, 56, 1, 128, 256);
+    teCase[5] = new testCase(fileName, 56, 1, 256, 256);
+
+    teCase[6] = new testCase(fileName, 28, 1, 256, 512);
+    teCase[7] = new testCase(fileName, 28, 1, 512, 512);
+
+    teCase[8] = new testCase(fileName, 14, 1, 512, 512);
 
     new0 fun0;
 

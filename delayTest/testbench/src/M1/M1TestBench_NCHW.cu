@@ -7,19 +7,20 @@ int main(){
     testCase* teCase[9];
     char fileName[] = "../../data/input.bin";
     
-    teCase[0] = new testCase(fileName, 224, 1, 1);      // size, batch, chn
-    teCase[1] = new testCase(fileName, 224, 1, 64);
 
-    teCase[2] = new testCase(fileName, 112, 1, 64);
-    teCase[3] = new testCase(fileName, 112, 1, 128);
+    teCase[0] = new testCase(fileName, 224, 1, 1, 64);      // size, batch, chn
+    teCase[1] = new testCase(fileName, 224, 1, 64, 64);
 
-    teCase[4] = new testCase(fileName, 56, 1, 128);
-    teCase[5] = new testCase(fileName, 56, 1, 256);
+    teCase[2] = new testCase(fileName, 112, 1, 64, 128);
+    teCase[3] = new testCase(fileName, 112, 1, 128, 128);
 
-    teCase[6] = new testCase(fileName, 28, 1, 256);
-    teCase[7] = new testCase(fileName, 28, 1, 512);
+    teCase[4] = new testCase(fileName, 56, 1, 128, 256);
+    teCase[5] = new testCase(fileName, 56, 1, 256, 256);
 
-    teCase[8] = new testCase(fileName, 14, 1, 512);
+    teCase[6] = new testCase(fileName, 28, 1, 256, 512);
+    teCase[7] = new testCase(fileName, 28, 1, 512, 512);
+
+    teCase[8] = new testCase(fileName, 14, 1, 512, 512);
 
     // orig orig_fun;
     // orig_fun.testValid(*teCase[0]);
@@ -38,7 +39,7 @@ int main(){
     // need to test the performance of the different dims     
     
     // for(int i=1; false; i++) {
-        int i=8;
+        int i=0;
         printf("i:%d\n",i);
     //     // test available
     //     // an array to get the availability;

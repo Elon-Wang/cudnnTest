@@ -33,4 +33,3 @@ int save_parameter(const char* filename, int size, float *parameter) {
     fclose(ptr);
     return cnt;
 }
-

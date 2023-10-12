@@ -11,7 +11,7 @@ public:
     
     char inputname[60];
 
-    testCase(char* fileName, int size, int batch, int channel){
+    testCase(char* fileName, int size, int batch, int channel, int channel_NextLevel){
         strcpy(inputname, fileName);
         inside = size;
         bat4Conv = batch;
