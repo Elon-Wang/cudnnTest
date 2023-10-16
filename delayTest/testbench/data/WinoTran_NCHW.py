@@ -97,7 +97,7 @@ def Wino_kernelTran(k_4d):
     K = chn
     KSize = (int((K-1)/8)+1)*8
     
-    k_4d = np.pad(k_4d, [(0,KSize-K),(0, 0), (0, 0), (0,NSize-N)], mode='constant')
+    k_4d = np.pad(k_4d, [(0,NSize-N),  (0,KSize-K),(0, 0), (0, 0)], mode='constant')
     kernelTran = np.zeros((36,KSize,NSize)).astype(np.float32)
 #     print(kernelTran.shape)
     for m in range(chn):

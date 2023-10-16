@@ -1,5 +1,6 @@
 // #pragma once
 #include "testCase.h"
+#include "string"
 // #include "util.h"
 
 __global__ void warmup(){}
@@ -31,7 +32,8 @@ class inputTransMethod{
 
     float* inputTran_gpu;
     float* inputTran_cpu;
-    char outFileName[30] = "default_Name.bin";
+    char outFileName[40] = "default_Name.bin";
+    char fileLastName[20] = "default_LastName";
 
     // counted in micro second
     float minDelay;
@@ -42,6 +44,7 @@ class inputTransMethod{
     bool testValid(testCase tc);
     float testPerformance(testCase tc);
     virtual void execut(testCase tc) =0 ;
+    void reportPerformance(testCase tc);
     inputTransMethod(){
         minSide = 4;
         maxSide = 1024;
@@ -49,6 +52,10 @@ class inputTransMethod{
         maxBatch = 1024;
         // printf("baseClasse default constructor\n minSide:%d, maxSide:%d maxChannel:%d maxBatch:%d\n",minSide, maxSide, maxChannel, maxBatch);
     }
+    // ~inputTransMethod(){
+    //     free(inputTran_gpu);
+    //     free(inputTran_cpu);
+    // }
 };
 
 bool inputTransMethod::testValid(testCase tc){
@@ -91,32 +98,55 @@ bool inputTransMethod::testValid(testCase tc){
 
 float inputTransMethod::testPerformance(testCase tc){
     
-    cudaEvent_t start1,stop1;
-    cudaEventCreate(&start1);
-    cudaEventCreate(&stop1);
+    warmup<<<1,1>>>();
+    int cnt =10;
+    float timeSeries[cnt];
+    avgDelay = 0;
+    char tcidx[5];
+    sprintf(tcidx,"%d",tc.index);
+    strcat(outFileName, tcidx);
+    strcat(outFileName, fileLastName);
 
-    cudaEventRecord(start1, NULL);
-    execut(tc);
-    cudaEventRecord(stop1, NULL);
+    for(int i =0; i < cnt;i++) {
+        cudaEvent_t start1,stop1;
+        cudaEventCreate(&start1);
+        cudaEventCreate(&stop1);
 
-    cudaEventSynchronize(start1);
-    cudaEventSynchronize(stop1);
+        cudaEventRecord(start1, NULL);
+        execut(tc);
+        cudaEventRecord(stop1, NULL);
 
-    cudaEventElapsedTime(&singleTime, start1, stop1);
+        cudaEventSynchronize(start1);
+        cudaEventSynchronize(stop1);
+
+        cudaEventElapsedTime(&singleTime, start1, stop1);
+        
+        cudaEventDestroy(start1);
+        cudaEventDestroy(stop1);
+        timeSeries[i] = singleTime;
+        avgDelay += singleTime;
+    }
     
-    cudaEventDestroy(start1);
-    cudaEventDestroy(stop1);
-
+    avgDelay /= cnt;
+    minDelay = timeSeries[0];
+    maxDelay = timeSeries[0];
+    for (int i=1; i<cnt; i++){
+        maxDelay = (maxDelay > timeSeries[i])? maxDelay: timeSeries[i];
+        minDelay = (minDelay < timeSeries[i])? minDelay: timeSeries[i];
+    }
     // printf("the time of this execut is %f\n",singleTime);
     
     cudaMemcpy(inputTran_cpu, inputTran_gpu, nInputTran<<2, cudaMemcpyDeviceToHost);
-    printf("first element:%f\n",inputTran_cpu[0]);
+    // printf("first element:%f\n",inputTran_cpu[0]);
+    // printf("%s\n",outFileName);
     save_parameter(outFileName, nInputTran, inputTran_cpu);
 
-    return singleTime;
+    return avgDelay;
     // profile the timing of the program
-    
-    // avetime = avetime/10;
+}
+
+void inputTransMethod::reportPerformance(testCase tc){
+    printf("testCase:%d\t avgDelay:%f\tminDelay:%f\tmaxDelay:%f\n",tc.index, avgDelay, minDelay,maxDelay);
 }
 
 class orig : public inputTransMethod{
@@ -126,7 +156,8 @@ class orig : public inputTransMethod{
         minSide = 6;
         maxSide = 262142;
         maxChannel = 512000;
-        strcpy(outFileName, "./data/M1_orig.bin");
+        strcpy(fileLastName,"/M1_orig.bin");
+        strcpy(outFileName, "./data/tc");
     }
     virtual void execut(testCase tc) {
         wino_input_trans_nchw_suitFor128<<<dim3(tc.chn,blockn,blockn),dim3(tc.bat4Conv,1,1)>>>(tc.inside, inside_beta, MSize, KSize, padding, tc.input_gpu, inputTran_gpu);
@@ -140,11 +171,12 @@ class new1 : public inputTransMethod{
         maxSide = 69632;
         maxBatch = 65535;
         maxChannel = 512000;
-        strcpy(outFileName, "./data/M1_new1.bin");
+        strcpy(fileLastName,"/M1_new1.bin");
+        strcpy(outFileName, "./data/tc");
     }
     virtual void execut(testCase tc) {
         int blockn_makeup= (blockn%8) ? (blockn+8 - blockn%8): blockn;
-        printf("blockn:%d, blockn_beta:%d\n",blockn_makeup,blockn);
+        // printf("blockn:%d, blockn_beta:%d\n",blockn_makeup,blockn);
         wino_input_trans_nchw_suitFor128_new1<<<dim3(tc.chn,(blockn_makeup*blockn_makeup/64),tc.bat4Conv),dim3(8,8)>>>(tc.inside, inside_beta, MSize, KSize, padding, (blockn_makeup/8), tc.input_gpu, inputTran_gpu);
     }
 };
@@ -156,7 +188,8 @@ class new2 : public inputTransMethod{
         minSide = 6;
         maxSide = 65535;
         maxBatch = 65535;
-        strcpy(outFileName, "./data/M1_new2.bin");
+        strcpy(fileLastName,"/M1_new2.bin");
+        strcpy(outFileName, "./data/tc");
     } 
     virtual void execut(testCase tc) {
         wino_input_trans_nchw_suitFor128_new2<<<dim3(blockn,blockn,tc.bat4Conv),dim3(tc.chn)>>>(tc.inside, inside_beta, MSize, KSize, padding, tc.input_gpu, inputTran_gpu);
@@ -170,7 +203,8 @@ class new3 : public inputTransMethod{
         minSide = 6;
         maxSide = 65535;
         maxBatch = 65535;
-        strcpy(outFileName, "./data/M1_new3.bin");
+        strcpy(fileLastName,"/M1_new3.bin");
+        strcpy(outFileName, "./data/tc");
     } 
     virtual void execut(testCase tc) {
         int blockn_makeup= (blockn%8) ? (blockn+8 - blockn%8): blockn;
@@ -186,7 +220,8 @@ class new4 : public inputTransMethod{
         minSide = 6;
         maxSide = 65535;
         maxBatch = 65535;
-        strcpy(outFileName, "./data/M1_new4.bin");
+        strcpy(fileLastName,"/M1_new4.bin");
+        strcpy(outFileName, "./data/tc");
     } 
     virtual void execut(testCase tc) {
         int blockn_makeup= (blockn%8) ? (blockn+8 - blockn%8): blockn;
@@ -201,7 +236,8 @@ class new5 : public inputTransMethod{
         minSide = 6;
         maxSide = 65535;
         maxBatch = 65535;
-        strcpy(outFileName, "./data/M1_new5.bin");
+        strcpy(fileLastName,"/M1_new5.bin");
+        strcpy(outFileName, "./data/tc");
     } 
     virtual void execut(testCase tc) {
         int blockn_makeup= (blockn%8) ? (blockn+8 - blockn%8): blockn;
@@ -218,7 +254,8 @@ class new6 : public inputTransMethod{
         minSide = 6;
         maxSide = 65535;
         maxBatch = 65535;
-        strcpy(outFileName, "./data/M1_new6.bin");
+        strcpy(fileLastName,"/M1_new6.bin");
+        strcpy(outFileName, "./data/tc");
     } 
     virtual void execut(testCase tc) {
         int blockn_makeup= (blockn%4) ? (blockn+4 - blockn%4): blockn;
@@ -321,28 +358,28 @@ __global__ void wino_input_trans_nchw_suitFor128_new1(int side, int side_beta, i
         }  
     }
 
-    if(blocknX == 3 && tidx == 4 && blocknY==0 && tidy ==0 && bidx ==0){
-        int idx = bidz + tidx*numOfBatch + blocknX*8*numOfBatch + tidy*blockn*numOfBatch + blocknY*blockn*numOfBatch*8 + bidx*MSize;
-        bool judge1 = blocknX*8 + tidx >=blockn;
-        bool judge2 = blocknY*8 + tidy>=blockn;
-        printf("idx:%d  idy:%d verify:%d, %d\n",blocknX*8 + tidx, blocknY*8+tidy, judge1, judge2);
+    // if(blocknX == 3 && tidx == 4 && blocknY==0 && tidy ==0 && bidx ==0){
+    //     int idx = bidz + tidx*numOfBatch + blocknX*8*numOfBatch + tidy*blockn*numOfBatch + blocknY*blockn*numOfBatch*8 + bidx*MSize;
+    //     bool judge1 = blocknX*8 + tidx >=blockn;
+    //     bool judge2 = blocknY*8 + tidy>=blockn;
+    //     printf("idx:%d  idy:%d verify:%d, %d\n",blocknX*8 + tidx, blocknY*8+tidy, judge1, judge2);
 
-    }
+    // }
 
-    if(blocknX == 3 && tidx == 4 && blocknY==1 && tidy ==0 && bidx ==0){
-        int idx = bidz + tidx*numOfBatch + blocknX*8*numOfBatch + tidy*blockn*numOfBatch + blocknY*blockn*numOfBatch*8 + bidx*MSize;
-        bool judge1 = blocknX*8 + tidx >=blockn;
-        bool judge2 = blocknY*8 + tidy>=blockn;
-        printf("idx:%d  idy:%d verify:%d, %d\n",blocknX*8 + tidx, blocknY*8+tidy, judge1, judge2);
-        printf("gridDim.y;%d, blockn:%d\n",gridDim.y,blockn);
-        printf("prepare for bool test\n blocknX:%d, blockn_beta:%d\n",blocknX,blockn_beta);
-        if (blocknX == blockn_beta-1 || blocknY ==blockn_beta-1) {
-            printf("test1\n");
-            if ((blocknX*8 + tidx >=blockn) || (blocknY*8 + tidy>=blockn)){
-                printf("test2\n");
-            }  
-        }
-    }
+    // if(blocknX == 3 && tidx == 4 && blocknY==1 && tidy ==0 && bidx ==0){
+    //     int idx = bidz + tidx*numOfBatch + blocknX*8*numOfBatch + tidy*blockn*numOfBatch + blocknY*blockn*numOfBatch*8 + bidx*MSize;
+    //     bool judge1 = blocknX*8 + tidx >=blockn;
+    //     bool judge2 = blocknY*8 + tidy>=blockn;
+    //     printf("idx:%d  idy:%d verify:%d, %d\n",blocknX*8 + tidx, blocknY*8+tidy, judge1, judge2);
+    //     printf("gridDim.y;%d, blockn:%d\n",gridDim.y,blockn);
+    //     printf("prepare for bool test\n blocknX:%d, blockn_beta:%d\n",blocknX,blockn_beta);
+    //     if (blocknX == blockn_beta-1 || blocknY ==blockn_beta-1) {
+    //         printf("test1\n");
+    //         if ((blocknX*8 + tidx >=blockn) || (blocknY*8 + tidy>=blockn)){
+    //             printf("test2\n");
+    //         }  
+    //     }
+    // }
 
     int inside = side;
     
@@ -392,28 +429,28 @@ __global__ void wino_input_trans_nchw_suitFor128_new1(int side, int side_beta, i
         pOutputs[i*6*size + 5*size] = 4*Atd[i][1] - 5*Atd[i][3] + Atd[i][5];
     }
 
-    if(blocknX == 0 && tidx == 0 && blocknY==1 && tidy ==1 && bidx ==0){
-        int idx = bidz + tidx*numOfBatch + blocknX*8*numOfBatch + tidy*blockn*numOfBatch + blocknY*blockn*numOfBatch*8 + bidx*MSize;
-        printf("idx:%d\n",idx);
-        // for(int i=0;i<6;i++){
+    // if(blocknX == 0 && tidx == 0 && blocknY==1 && tidy ==1 && bidx ==0){
+    //     int idx = bidz + tidx*numOfBatch + blocknX*8*numOfBatch + tidy*blockn*numOfBatch + blocknY*blockn*numOfBatch*8 + bidx*MSize;
+    //     printf("idx:%d\n",idx);
+    //     // for(int i=0;i<6;i++){
             
-        //     printf("%f ",Mread[i][0]);
-        //     printf("%f ",Mread[i][1]);
-        //     printf("%f ",Mread[i][2]);
-        //     printf("%f ",Mread[i][3]);
-        //     printf("%f ",Mread[i][4]);
-        //     printf("%f \n",Mread[i][5]);
-        // }
+    //     //     printf("%f ",Mread[i][0]);
+    //     //     printf("%f ",Mread[i][1]);
+    //     //     printf("%f ",Mread[i][2]);
+    //     //     printf("%f ",Mread[i][3]);
+    //     //     printf("%f ",Mread[i][4]);
+    //     //     printf("%f \n",Mread[i][5]);
+    //     // }
 
-        // for(int i =0;i<6;i++) {
-        //     printf("%f ",4*Atd[i][0] - 5*Atd[i][2] + Atd[i][4] );
-        //     printf("%f ",-4*Atd[i][1] - 4*Atd[i][2] + Atd[i][3] + Atd[i][4]  );
-        //     printf("%f ",4*Atd[i][1] - 4*Atd[i][2] - Atd[i][3] + Atd[i][4]); 
-        //     printf("%f ",-2*Atd[i][1] - Atd[i][2] + 2*Atd[i][3] + Atd[i][4]); 
-        //     printf("%f ",2*Atd[i][1] - Atd[i][2] - 2*Atd[i][3] + Atd[i][4]); 
-        //     printf("%f \n",4*Atd[i][1] - 5*Atd[i][3] + Atd[i][5]); 
-        // }
-    }
+    //     // for(int i =0;i<6;i++) {
+    //     //     printf("%f ",4*Atd[i][0] - 5*Atd[i][2] + Atd[i][4] );
+    //     //     printf("%f ",-4*Atd[i][1] - 4*Atd[i][2] + Atd[i][3] + Atd[i][4]  );
+    //     //     printf("%f ",4*Atd[i][1] - 4*Atd[i][2] - Atd[i][3] + Atd[i][4]); 
+    //     //     printf("%f ",-2*Atd[i][1] - Atd[i][2] + 2*Atd[i][3] + Atd[i][4]); 
+    //     //     printf("%f ",2*Atd[i][1] - Atd[i][2] - 2*Atd[i][3] + Atd[i][4]); 
+    //     //     printf("%f \n",4*Atd[i][1] - 5*Atd[i][3] + Atd[i][5]); 
+    //     // }
+    // }
     // if(blocknX == 3 && tidx == 4 && blocknY==1 && tidy ==0 && bidx ==0){
     //     int idx = bidz + tidx*numOfBatch + blocknX*8*numOfBatch + tidy*blockn*numOfBatch + blocknY*blockn*numOfBatch*8 + bidx*MSize;
     //     printf("idx:%d\n",idx);

@@ -8,14 +8,16 @@ public:
     int nInput;
     float *input_cpu;
     float *input_gpu;  //, *output_gpu;
+    int index;
     
     char inputname[60];
 
-    testCase(char* fileName, int size, int batch, int channel, int channel_NextLevel){
+    testCase(char* fileName, int size, int batch, int channel, int channel_NextLevel, int idx){
         strcpy(inputname, fileName);
         inside = size;
         bat4Conv = batch;
         chn = channel;
+        index = idx;
         
         nInput = bat4Conv * inside * inside * (chn) +1;
         input_cpu = get_parameter(inputname, nInput);

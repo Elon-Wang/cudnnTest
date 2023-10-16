@@ -544,7 +544,7 @@ class network_t
         cudaEventElapsedTime(&avetime, start1, stop1);
         cudaEventDestroy(start1);
         cudaEventDestroy(stop1);
-        printf("time:%lf us\n", (avetime*1000));
+        printf("time:%lf ms\n", (avetime));
 
         bool debug = false;
         if (debug){
