@@ -2,6 +2,7 @@
 
 class testCase{
     public:
+    int index;
     int bat4Conv;
     int bat4Gemm = 36;
     int inside, inside_beta;
@@ -17,8 +18,16 @@ class testCase{
     float *gemmOutput_cpu;
     float *gemmOutput_gpu;
 
-    testCase(char* fileName, int size, int batch, int channel, int channel_NextLevel){
+    testCase(char* fileName, int size, int batch, int channel, int channel_NextLevel, int idx){
+        index = idx;
+        
+        char str2[5];
+        char str3[20] = "/M3_new0.bin";
+        sprintf(str2,"%d", index);
         strcpy(gemmOutputName, fileName);
+        strcat(gemmOutputName, str2);
+        strcat(gemmOutputName, str3);
+
         numOfFilter = channel_NextLevel;
         bat4Conv = batch;
         // chn = channel;

@@ -1,5 +1,6 @@
 #include "testCase.h"
 
+__global__ void warmup(){}
 __global__ void wino_invers_nchw_suitFor128(int oside, int MSize, int NSize, float* pInputs, float* pOutputs);
 
 class inverse_Method{
@@ -15,15 +16,19 @@ class inverse_Method{
     float *output_cpu;
     float *output_gpu;
 
-
     char outFileName[30] = "default_Name.bin";
-    float minDelay;
+    char fileLastName[20] = "default_LastName";
+
     float singleTime;
+    float minDelay;
+    float maxDelay;
+    float avgDelay;
     bool valid;
 
     bool testValid(testCase tc);
     float testPerformance(testCase tc);
     virtual void execut(testCase tc)=0;
+    void reportPerformance(testCase tc);
 
     inverse_Method(){
         //initial
@@ -58,35 +63,60 @@ bool inverse_Method::testValid(testCase tc){
 }
 
 float inverse_Method::testPerformance(testCase tc){
-    cudaEvent_t start1,stop1;
-    cudaEventCreate(&start1);
-    cudaEventCreate(&stop1);
+    warmup<<<1,1>>>();
+    int cnt =10;
+    float timeSeries[cnt];
+    avgDelay = 0;
+    char tcidx[5];
+    sprintf(tcidx,"%d",tc.index);
+    strcat(outFileName, tcidx);
+    strcat(outFileName, fileLastName);
 
-    cudaEventRecord(start1, NULL);
-    execut(tc);
-    cudaEventRecord(stop1, NULL);
+    for(int i=0;i<cnt;i++) {
+        cudaEvent_t start1,stop1;
+        cudaEventCreate(&start1);
+        cudaEventCreate(&stop1);
 
-    cudaEventSynchronize(start1);
-    cudaEventSynchronize(stop1);
+        cudaEventRecord(start1, NULL);
+        execut(tc);
+        cudaEventRecord(stop1, NULL);
 
-    cudaEventElapsedTime(&singleTime, start1, stop1);
+        cudaEventSynchronize(start1);
+        cudaEventSynchronize(stop1);
+
+        cudaEventElapsedTime(&singleTime, start1, stop1);
+
+        cudaEventDestroy(start1);
+        cudaEventDestroy(stop1);
+
+        timeSeries[i] = singleTime;
+        avgDelay += singleTime;
+    }
     
-    cudaEventDestroy(start1);
-    cudaEventDestroy(stop1);
-
-    // printf("the time of this execut is %f\n",singleTime);
+    avgDelay /= cnt;
+    minDelay = timeSeries[0];
+    maxDelay = timeSeries[0];
+    for (int i=1; i<cnt; i++){
+        maxDelay = (maxDelay > timeSeries[i])? maxDelay: timeSeries[i];
+        minDelay = (minDelay < timeSeries[i])? minDelay: timeSeries[i];
+    }
     
     cudaMemcpy(output_cpu, output_gpu, nOutput<<2, cudaMemcpyDeviceToHost);
-    printf("first element:%f\n",output_cpu[0]);
+    // printf("first element:%f\n",output_cpu[0]);
     save_parameter(outFileName, nOutput, output_cpu);
 
-    return singleTime;
+    return avgDelay;
+}
+
+void inverse_Method::reportPerformance(testCase tc){
+    printf("testCase:%d\t avgDelay:%f\tminDelay:%f\tmaxDelay:%f\n",tc.index, avgDelay, minDelay,maxDelay);
 }
 
 class new0 : public inverse_Method{
     public:
     new0(){
-        strcpy(outFileName, "./data/M4_new0.bin");
+        strcpy(fileLastName,"/M4_new0.bin");
+        strcpy(outFileName, "./data/tc");
     }
     virtual void execut(testCase tc){
         // printf("bat4Conv:%d, blockn:%d, numOfFilter:%d\n", bat4Conv, blockn, numOfFilter);

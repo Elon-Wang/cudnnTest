@@ -23,14 +23,14 @@ class GEMM_Method{
     int MSize, NSize, KSize;
     int blockx, blocky;
 
-
     // int padding =1;
     // int marginOfInputSide, M, K;
     // bool sideCheck, MCheck, KCheck;
     int nGemmOutput;
     float* gemmOutput_gpu;
     float* gemmOutput_cpu;
-    char outFileName[30] = "default_Name.bin";
+    char outFileName[40] = "default_Name.bin";
+    char fileLastName[20] = "default_LastName";
 
     // counted in micro second
     float singleTime =0;
@@ -42,6 +42,7 @@ class GEMM_Method{
     bool testValid(testCase tc);
     float testPerformance(testCase tc);
     virtual void execut(testCase tc) =0 ;
+    void reportPerformance(testCase tc);
     GEMM_Method(){
         // minSide = 4;
         // maxSide = 1024;
@@ -70,7 +71,7 @@ bool GEMM_Method::testValid(testCase tc){
     MSize  = tc.MSize;
     NSize  = tc.NSize;
     KSize  = tc.KSize;
-    printf("MSize:%d NSize:%d KSize:%d\n",MSize,NSize,KSize);
+    // printf("MSize:%d NSize:%d KSize:%d\n",MSize,NSize,KSize);
     if(MSize >= min_M && MSize <=max_M && NSize >= min_N&& NSize <= max_N && KSize >= min_K && KSize <= max_K) {
         blockx = (MSize+127)/128;
         blocky = (NSize+127)/128;
@@ -86,33 +87,61 @@ bool GEMM_Method::testValid(testCase tc){
 }
 
 float GEMM_Method::testPerformance(testCase tc){
-    cudaEvent_t start1,stop1;
-    cudaEventCreate(&start1);
-    cudaEventCreate(&stop1);
 
-    cudaEventRecord(start1, NULL);
-    execut(tc);
-    cudaEventRecord(stop1, NULL);
+    warmup<<<1,1>>>();
+    int cnt =10;
+    float timeSeries[cnt];
+    avgDelay = 0;
+    char tcidx[5];
+    sprintf(tcidx,"%d",tc.index);
+    strcat(outFileName, tcidx);
+    strcat(outFileName, fileLastName);
 
-    cudaEventSynchronize(start1);
-    cudaEventSynchronize(stop1);
+    for (int i=0; i <cnt;i++) {
+        cudaEvent_t start1,stop1;
+        cudaEventCreate(&start1);
+        cudaEventCreate(&stop1);
 
-    cudaEventElapsedTime(&singleTime, start1, stop1);
+        cudaEventRecord(start1, NULL);
+        execut(tc);
+        cudaEventRecord(stop1, NULL);
+
+        cudaEventSynchronize(start1);
+        cudaEventSynchronize(stop1);
+
+        cudaEventElapsedTime(&singleTime, start1, stop1);
+        
+        cudaEventDestroy(start1);
+        cudaEventDestroy(stop1);
+        timeSeries[i] = singleTime;
+        avgDelay += singleTime;
+    }
+
+    avgDelay /= cnt;
+    minDelay = timeSeries[0];
+    maxDelay = timeSeries[0];
+    for (int i=1; i<cnt; i++){
+        maxDelay = (maxDelay > timeSeries[i])? maxDelay: timeSeries[i];
+        minDelay = (minDelay < timeSeries[i])? minDelay: timeSeries[i];
+    }
     
-    cudaEventDestroy(start1);
-    cudaEventDestroy(stop1);
 
     cudaMemcpy( gemmOutput_cpu, gemmOutput_gpu, nGemmOutput<<2, cudaMemcpyDeviceToHost);
-    printf("first element:%f\n",gemmOutput_cpu[0]);
+    // printf("first element:%f\n",gemmOutput_cpu[0]);
     save_parameter(outFileName, nGemmOutput, gemmOutput_cpu);
 
     return singleTime;
 }
 
+void GEMM_Method::reportPerformance(testCase tc){
+    printf("testCase:%d\t avgDelay:%f\tminDelay:%f\tmaxDelay:%f\n",tc.index, avgDelay, minDelay,maxDelay);
+}
+
 class new0 : public GEMM_Method{
     public:
     new0(){
-        strcpy(outFileName, "./data/M3_new0.bin");
+        strcpy(fileLastName,"/M3_new0.bin");
+        strcpy(outFileName, "./data/tc");
     }
     virtual void execut(testCase tc){
         GEMM_batch_256_128x128_KMKN<<<dim3(blockx, blocky, bat4Gemm), dim3(256,1,1)>>> (MSize,NSize,KSize,1, tc.inputTran_gpu, tc.kernelTran_gpu,0, gemmOutput_gpu);

@@ -25,7 +25,7 @@ class inputTransMethod{
     int inside_beta;
     int nInputTran;
     int padding =1;
-    float singleTime =0;
+    
 
     int marginOfInputSide, M, K;
     bool sideCheck, MCheck, KCheck;
@@ -36,6 +36,7 @@ class inputTransMethod{
     char fileLastName[20] = "default_LastName";
 
     // counted in micro second
+    float singleTime =0;
     float minDelay;
     float maxDelay;
     float avgDelay;
@@ -156,7 +157,7 @@ class orig : public inputTransMethod{
         minSide = 6;
         maxSide = 262142;
         maxChannel = 512000;
-        strcpy(fileLastName,"/M1_orig.bin");
+        strcpy(fileLastName,"/M1_new0.bin");
         strcpy(outFileName, "./data/tc");
     }
     virtual void execut(testCase tc) {

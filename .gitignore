@@ -7,3 +7,4 @@ netTest/cudnn_sample_modified/mnistCUDNN/data_bak/*
 **/*.bin
 **/.ipynb_checkpoints
 **/__pycache__
+netTest/cudnn_test_0124/VGG/vggCUDNN

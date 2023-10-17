@@ -2,6 +2,7 @@
 #include "util.h"
 class testCase{
 public:
+    int index;
     int inside_beta;
     int chn;
     int bat4Conv;
@@ -17,7 +18,7 @@ public:
     char inputTranName[60];
     char kernelTranName[60];
 
-    testCase(char* fileName1, char* fileName2,  int size, int batch, int channel, int channel_NextLevel ){
+    testCase(char* fileName1, char* fileName2,  int size, int batch, int channel, int channel_NextLevel, int idx){
         bat4Conv = batch;
         chn = channel;
         int padding =1;
@@ -28,9 +29,20 @@ public:
         M = bat4Conv * blockn * blockn;
         N = channel_NextLevel;
         K = channel;
+        index = idx;
+
+        char M1LastName[20] = "/M1_new0.bin";
+        char M2LastName[20] = "/M2_new0.bin";
+        char tcidx[5];
+        sprintf(tcidx,"%d", index);
 
         strcpy(inputTranName, fileName1);
+        strcat(inputTranName, tcidx);
+        strcat(inputTranName, M1LastName);
+
         strcpy(kernelTranName, fileName2);
+        strcat(kernelTranName, tcidx);
+        strcat(kernelTranName, M2LastName);
 
         bool MCheck = ( M % 128 == 0 )? true: false;
         bool NCheck = ( N % 128 == 0 )? true: false;
@@ -40,10 +52,15 @@ public:
         NSize = NCheck? N: ((N/128 +1) * 128);
         KSize = KCheck? K: ((K/8 +1) * 8);
 
+
+        // printf("fileA:%s\nfileB:%s\n", inputTranName, kernelTranName);
+
         nInputTran = 36* MSize *KSize;
         nKernelTran = 36* NSize *KSize;
         inputTran_cpu = get_parameter(inputTranName, nInputTran);
         kernelTran_cpu = get_parameter(kernelTranName, nKernelTran);
+
+        // printf("reading file\n");
         
         cudaMalloc((void **) &inputTran_gpu, nInputTran<<2);
         cudaMalloc((void **) &kernelTran_gpu, nKernelTran<<2);
