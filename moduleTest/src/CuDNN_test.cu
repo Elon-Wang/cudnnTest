@@ -10,8 +10,8 @@ int main(int argc, char** argv){
     // printf("Implicit_gemm:0 Implicit_precomp_gemm:1 GEMM:2\n");
     // printf("Winograd:6 Wino_nonfused:7\n");
 
-    const char inputname[] = "../data/input.bin";
-    const char filtername[] = "../data/filter.bin";
+    const char inputname[] = "../../delayTest/testbench/src/M1/data/input.bin";
+    const char filtername[] = "../../delayTest/testbench/src/M2/data/kernel.bin";
     const char outputName[] = "../data/Cu_output2.bin";
 
     /*----------parameters & data setup-------------*/

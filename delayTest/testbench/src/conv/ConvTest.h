@@ -158,16 +158,14 @@ class new0: public ConvTest{
 
 class cudnnConv: public ConvTest{
     public:
-    cudnnStatus_t status;
     float one = 1.0, zero = 0.0;
     int size;
+    cudnnStatus_t status;
     cudnnHandle_t handle;
-    status = cudnnCreate(&handle);
-    if (status != CUDNN_STATUS_SUCCESS) printf("failed1\n");
+    
     cudnnTensorDescriptor_t xdesc, ydesc;
     cudnnFilterDescriptor_t wdesc; // CUDNN_TENSOR_NHWC, CUDNN_TENSOR_NCHW
-    status = cudnnCreateTensorDescriptor(&xdesc);
-    if (status != CUDNN_STATUS_SUCCESS) printf("failed2\n");
+    
     cudnnConvolutionDescriptor_t conv_desc;
     cudnnConvolutionFwdAlgo_t algo;
     float *extra;
@@ -179,29 +177,44 @@ class cudnnConv: public ConvTest{
         strcpy(outFileName, "./data/tc");
     }
     virtual void execut(testCase tc){
-        status = cudnnConvolutionForward(handle, &one, xdesc, input_gpu, wdesc, filter_gpu, conv_desc, algo, extra, size, &zero, ydesc, output_gpu);
+        status = cudnnConvolutionForward(handle, &one, xdesc, tc.input_gpu, wdesc, tc.kernel_gpu, conv_desc, algo, extra, size, &zero, ydesc, output_gpu);
         if (status != CUDNN_STATUS_SUCCESS) printf("Not Successed:%s\n",cudnnGetErrorString(status));
     }
     ~cudnnConv(){
         cudnnDestroy(handle);
         cudaFree(extra);
-        cudaFree(input_gpu);
-        cudaFree(output_gpu);
-        cudaFree(filter_gpu);
+        // cudaFree(input_gpu);
+        // cudaFree(output_gpu);
+        // cudaFree(filter_gpu);
     }
-}
+};
 
-virtual bool cudnnConv::testValid(testCase tc){
+bool cudnnConv::testValid(testCase tc){
     if(true){
-        status = cudnnSetTensor4dDescriptor(xdesc, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, Batch, chn, inside, inside);//input
+        inside = tc.side;
+        chn = tc.chn;
+        numOfFilter = tc.numOfFilter;
+        bat4Conv = tc.bat4Conv;
+        oside = inside +2*padding -2;
+
+        nOutput = numOfFilter * oside *oside * chn;
+        cudaMalloc((void **) &output_gpu, nOutput<<2);
+        cudaMemset((void *) output_gpu, 0, nOutput<<2);
+        output_cpu = (float*) malloc(nOutput*4);
+
+        status = cudnnCreate(&handle);
+        if (status != CUDNN_STATUS_SUCCESS) printf("failed1\n");
+        status = cudnnCreateTensorDescriptor(&xdesc);
+        if (status != CUDNN_STATUS_SUCCESS) printf("failed2\n");
+        status = cudnnSetTensor4dDescriptor(xdesc, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, bat4Conv, chn, inside, inside);//input
         if (status != CUDNN_STATUS_SUCCESS) printf("failed3\n");
         status = cudnnCreateTensorDescriptor(&ydesc);
         if (status != CUDNN_STATUS_SUCCESS) printf("failed4\n");
-        status = cudnnSetTensor4dDescriptor(ydesc, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, Batch, chn, oside, oside);//output
+        status = cudnnSetTensor4dDescriptor(ydesc, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, bat4Conv, numOfFilter, oside, oside);//output
         if (status != CUDNN_STATUS_SUCCESS) printf("failed5\n");
         status = cudnnCreateFilterDescriptor(&wdesc);
         if (status != CUDNN_STATUS_SUCCESS) printf("failed6\n");
-        status = cudnnSetFilter4dDescriptor(wdesc, CUDNN_DATA_FLOAT, CUDNN_TENSOR_NCHW, chn, chn, 3, 3);//filter
+        status = cudnnSetFilter4dDescriptor(wdesc, CUDNN_DATA_FLOAT, CUDNN_TENSOR_NCHW, numOfFilter, chn, 3, 3);//filter
         if (status != CUDNN_STATUS_SUCCESS) printf("failed7\n");
         status = cudnnCreateConvolutionDescriptor(&conv_desc);
         if (status != CUDNN_STATUS_SUCCESS) printf("failed10\n");
@@ -209,7 +222,7 @@ virtual bool cudnnConv::testValid(testCase tc){
         if (status != CUDNN_STATUS_SUCCESS) printf("failed11\n");
         status = cudnnSetConvolutionMathType(conv_desc, CUDNN_FMA_MATH);
         if (status != CUDNN_STATUS_SUCCESS) printf("failed12\n");
-        algo = (cudnnConvolutionFwdAlgo_t)model;
+        algo = (cudnnConvolutionFwdAlgo_t)7; //CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD_NONFUSED
         status = cudnnGetConvolutionForwardWorkspaceSize(handle,
             xdesc,
             wdesc,
@@ -219,7 +232,7 @@ virtual bool cudnnConv::testValid(testCase tc){
             (size_t *)&(size)
         );
         cudaMalloc((void **) &extra, size);
-
+        return true;
     } else {
         printf("**************test case invalid*************\n");
         return false;
