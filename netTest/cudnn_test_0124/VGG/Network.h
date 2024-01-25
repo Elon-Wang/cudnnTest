@@ -20,6 +20,7 @@ class network_t
     cudnnLRNDescriptor_t   normDesc;
     cudnnDropoutDescriptor_t dropoutDesc;
     cublasHandle_t cublasHandle;
+    float *inputTran_gpu, *filterTran_gpu, *gemmOutput_gpu;
 
     void createHandles()
     {
@@ -116,7 +117,7 @@ class network_t
     {
         int dim_x = c*h*w;
         int dim_y = ip.outputs;
-        resize(n*dim_y, dstData);
+        // resize(n*dim_y, dstData);
 
         scaling_type alpha = scaling_type(1), beta = scaling_type(1);
 
@@ -236,7 +237,7 @@ class network_t
             algo = (cudnnConvolutionFwdAlgo_t)convAlgorithm;
         }
 
-        resize(n*c*h*w, dstData);
+        // resize(n*c*h*w, dstData);
         size_t sizeInBytes=0;
         void* workSpace=NULL;
         checkCUDNN( cudnnGetConvolutionForwardWorkspaceSize(cudnnHandle,
@@ -300,7 +301,7 @@ class network_t
 
         setTensorDesc(dstTensorDesc, tensorFormat, dataType, n, c, h, w);  
      
-        resize(n*c*h*w, dstData);
+        // resize(n*c*h*w, dstData);
         scaling_type alpha = scaling_type(1);
         scaling_type beta = scaling_type(0);
         checkCUDNN( cudnnPoolingForward(cudnnHandle,
@@ -315,7 +316,7 @@ class network_t
 
     void softmaxForward(int n, int c, int h, int w, value_type* srcData, value_type** dstData)
     {
-        resize(n*c*h*w, dstData);
+        // resize(n*c*h*w, dstData);
 
         setTensorDesc(srcTensorDesc, tensorFormat, dataType, n, c, h, w);
         setTensorDesc(dstTensorDesc, tensorFormat, dataType, n, c, h, w);
@@ -344,7 +345,7 @@ class network_t
                                             lrnBeta,
                                             lrnK) );
 
-        resize(n*c*h*w, dstData);
+        // resize(n*c*h*w, dstData);
 
         setTensorDesc(srcTensorDesc, tensorFormat, dataType, n, c, h, w);
         setTensorDesc(dstTensorDesc, tensorFormat, dataType, n, c, h, w);
@@ -369,7 +370,7 @@ class network_t
                                                 CUDNN_PROPAGATE_NAN,
                                                 0.0) );
     
-        resize(n*c*h*w, dstData);
+        // resize(n*c*h*w, dstData);
 
         setTensorDesc(srcTensorDesc, tensorFormat, dataType, n, c, h, w);
         setTensorDesc(dstTensorDesc, tensorFormat, dataType, n, c, h, w);
@@ -399,10 +400,30 @@ class network_t
     void convMethodChoose(const Layer_t<value_type>& conv, int& n, int& c, int& h, int& w,
                           value_type* srcData, value_type** dstData, bool choice){
         if (choice) {
-            wrapedConv_NCHW(n, h, c, conv.outputs, 1, srcData, conv.data_d, dstData);
+            // cudaEvent_t ts1, ts2, ts3;
+            // cudaEventCreate(&ts1);
+            // cudaEventCreate(&ts2);
+            // cudaEventCreate(&ts3);
+
+            // cudaEventRecord(ts1, NULL);
+            wrapedConv_NCHW(n, h, c, conv.outputs, 1, srcData, conv.data_d, inputTran_gpu, filterTran_gpu, gemmOutput_gpu , dstData);
+            // wrapedConv_NCHW(n, h, c, conv.outputs, 1, srcData, conv.data_d, dstData);
+
+            cudaDeviceSynchronize();
+            // cudaEventRecord(ts2, NULL);
             c = conv.outputs;
             setTensorDesc(dstTensorDesc, tensorFormat, dataType, n, c, h, w);
             addBias(dstTensorDesc, conv, c, *dstData);
+
+            // cudaEventRecord(ts3, NULL);
+            // cudaEventSynchronize(ts1);
+            // cudaEventSynchronize(ts2);
+            // cudaEventSynchronize(ts3);
+            // float timeCache;
+            // cudaEventElapsedTime(&timeCache, ts1, ts2);
+            // printf("ts2:%lf ms\n", (timeCache));
+            // cudaEventElapsedTime(&timeCache, ts2, ts3);
+            // printf("ts3:%lf ms\n", (timeCache));
         } else{
             convoluteForward(conv, n, c, h, w, srcData, dstData);
         }
@@ -438,9 +459,22 @@ class network_t
 
         readImage(fname, imgData_h, n*c*h*w);
 
+        // printf("srcData first setup, valid:%d, %d\n",(srcData!=NULL),srcData);
         // std::cout << "Performing forward propagation ...\n";
 
-        checkCudaErrors( cudaMalloc(&srcData, side * side * sizeof(value_type) * batch * chn) );
+        checkCudaErrors( cudaMalloc(&srcData, side * side * sizeof(value_type) * batch * 64) );
+        checkCudaErrors( cudaMalloc(&dstData, side * side * sizeof(value_type) * batch * 64) );
+        
+        int nInputTran = 36*3200*64;
+        int nFilterTran = 36*512*512;
+        int nGemmOutput = 36*3200*128;
+        cudaMalloc((void **) &inputTran_gpu,  nInputTran<<2);
+        cudaMalloc((void **) &filterTran_gpu, nFilterTran<<2);
+        cudaMalloc((void **) &gemmOutput_gpu, nGemmOutput<<2);
+        // checkCudaErrors( cudaMalloc(&inputTran_gpu, 36* 3200 * 64) );
+        // checkCudaErrors( cudaMalloc(&filterTran_gpu, 36* 512 * 512) );
+        // checkCudaErrors( cudaMalloc(&gemmOutput_gpu, 36* 3200 * 128) );
+
         checkCudaErrors( cudaMemcpy(srcData, imgData_h,
                                     side * side *sizeof(value_type) * batch * chn,
                                     cudaMemcpyHostToDevice) );
@@ -467,16 +501,18 @@ class network_t
         // }printf("\n");
 
         float avetime =0;
+        // cudaEvent_t start1,stop1,ts1,ts2,ts3,ts4,ts5,ts6;
         cudaEvent_t start1,stop1;
         cudaEventCreate(&start1);
         cudaEventCreate(&stop1);
 
         cudaEventRecord(start1, NULL);
 
-        bool testChoice = false;
+        bool testChoice = true;
+
         convMethodChoose(conv1, n, c, h, w, srcData, &dstData, testChoice);
         activationForward(n, c, h, w, dstData, &srcData);
-        convMethodChoose(conv2, n, c, h, w, srcData, &dstData, testChoice);
+        convMethodChoose(conv2, n, c, h, w, srcData, &dstData, testChoice);      
         activationForward(n, c, h, w, dstData, &srcData);
 		poolForward(n, c, h, w, srcData, &dstData);
         
@@ -541,6 +577,20 @@ class network_t
             }
             // std::cout << "Batch "<< batch <<" Resulting weights from Softmax:" << id << std::endl;
         }
+        // float timeCache;
+        // cudaEventElapsedTime(&timeCache, start1, ts1);
+        // printf("ts1:%lf ms\n", (timeCache));
+        // cudaEventElapsedTime(&timeCache, ts1, ts2);
+        // printf("ts2:%lf ms\n", (timeCache));
+        // cudaEventElapsedTime(&timeCache, ts2, ts3);
+        // printf("ts3:%lf ms\n", (timeCache));
+        // cudaEventElapsedTime(&timeCache, ts3, ts4);
+        // printf("ts4:%lf ms\n", (timeCache));
+        // cudaEventElapsedTime(&timeCache, ts4, ts5);
+        // printf("ts5:%lf ms\n", (timeCache));
+        // cudaEventElapsedTime(&timeCache, ts5, ts6);
+        // printf("ts6:%lf ms\n", (timeCache));
+
         cudaEventElapsedTime(&avetime, start1, stop1);
         cudaEventDestroy(start1);
         cudaEventDestroy(stop1);

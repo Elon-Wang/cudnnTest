@@ -153,8 +153,10 @@ int main(int argc, char *argv[])
         int result[1000];
         int err = 0;
         int Round = 20;
+        warmup<<<1,1>>>();
 
         for(int i=0; i< Round;i++) {
+            
             if (i %50 ==0)
                 std::cout << "Performing forward propagation "<<  (100*i/(float)Round) <<"% ...\n";
             //single Batch testing

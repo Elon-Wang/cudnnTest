@@ -95,7 +95,7 @@ bool ConvTest::testValid(testCase tc){
 float ConvTest::testPerformance(testCase tc) {
 
     warmup<<<1,1>>>();
-    int cnt =10;
+    int cnt =3;
     float timeSeries[cnt];
     avgDelay = 0;
     char tcidx[5];
@@ -110,6 +110,7 @@ float ConvTest::testPerformance(testCase tc) {
 
         cudaEventRecord(start1, NULL);
         execut(tc);
+        // cudaDeviceSynchronize();
         cudaEventRecord(stop1, NULL);
 
         cudaEventSynchronize(start1);
@@ -153,6 +154,15 @@ class new0: public ConvTest{
         wino_kernel_trans_nchw_suitFor128<<<dim3( chn,1,1),dim3(tc.numOfFilter,1,1)>>>(NSize, KSize, tc.kernel_gpu, kernelTran_gpu);
         GEMM_batch_256_128x128_KMKN<<<dim3(blockx, blocky, bat4Gemm), dim3(256,1,1)>>> (MSize,NSize,KSize,1, inputTran_gpu, kernelTran_gpu,0, gemmOutput_gpu);
         wino_invers_nchw_suitFor128<<<dim3(bat4Conv,blockn,blockn), dim3(numOfFilter,1,1)>>>(oside, MSize, NSize, gemmOutput_gpu, output_gpu);
+        //  cudaMalloc((void **) &inputTran_gpu, nInputTran<<2); 
+        // cudaMalloc((void **) &kernelTran_gpu, nKernelTran<<2); 
+        // cudaMalloc((void **) &gemmOutput_gpu, nGemmOutput<<2); 
+        // cudaMalloc((void **) &output_gpu, nOutput<<2);  
+        // cudaFree(inputTran_gpu);      
+        // cudaFree(kernelTran_gpu);
+        // cudaFree(gemmOutput_gpu);
+        cudaDeviceSynchronize();
+        // printf("first element:%f\n",inputTran_gpu[0]);
     }
 };
 
@@ -173,7 +183,7 @@ class cudnnConv: public ConvTest{
 
     virtual bool testValid(testCase tc);
     cudnnConv(){
-        strcpy(fileLastName,"/Conv_new0.bin");
+        strcpy(fileLastName,"/Conv_new0_cudnn.bin");
         strcpy(outFileName, "./data/tc");
     }
     virtual void execut(testCase tc){
