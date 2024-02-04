@@ -432,7 +432,7 @@ class network_t
         }
     }
 
-    int classify_example_modified(const char* fname, const Layer_t<value_type>& conv1,
+    std::vector<int> classify_example_modified(const char* fname, const Layer_t<value_type>& conv1,
                           const Layer_t<value_type>& conv2,
                           const Layer_t<value_type>& conv3,
                           const Layer_t<value_type>& conv4,
@@ -468,9 +468,9 @@ class network_t
         checkCudaErrors( cudaMalloc(&srcData, side * side * sizeof(value_type) * batch * 64) );
         checkCudaErrors( cudaMalloc(&dstData, side * side * sizeof(value_type) * batch * 64) );
         
-        int nInputTran = 36*3200*64;
-        int nFilterTran = 36*512*512;
-        int nGemmOutput = 36*3200*128;
+        int nInputTran = 36*3200*64 *batch;
+        int nFilterTran = 36*512*512 *batch;
+        int nGemmOutput = 36*3200*128 *batch;
         cudaMalloc((void **) &inputTran_gpu,  nInputTran<<2);
         cudaMalloc((void **) &filterTran_gpu, nFilterTran<<2);
         cudaMalloc((void **) &gemmOutput_gpu, nGemmOutput<<2);
@@ -569,6 +569,7 @@ class network_t
         cudaMemcpy(result, dstData, n*max_digits<<2, cudaMemcpyDeviceToHost);
         
         // not captible with multiple batch inference
+        std::vector<int> ret;
         int id = 0;
         for (int batch =0; batch <n; batch++) 
         {
@@ -579,7 +580,9 @@ class network_t
                 }
             }
             // std::cout << "Batch "<< batch <<" Resulting weights from Softmax:" << id << std::endl;
+            ret.push_back(id);
         }
+        
         // float timeCache;
         // cudaEventElapsedTime(&timeCache, start1, ts1);
         // printf("ts1:%lf ms\n", (timeCache));
@@ -597,16 +600,19 @@ class network_t
         cudaEventElapsedTime(&avetime, start1, stop1);
         cudaEventDestroy(start1);
         cudaEventDestroy(stop1);
-        printf("time:%lf ms\n", (avetime));
+        printf("time:%lf ms\n", (avetime/n));
 
         bool debug = false;
         if (debug){
             printDeviceVector(n, c*h*w, dstData);
         }
 
+        checkCudaErrors( cudaFree(inputTran_gpu));
+        checkCudaErrors( cudaFree(filterTran_gpu));
+        checkCudaErrors( cudaFree(gemmOutput_gpu));
 
         checkCudaErrors( cudaFree(srcData) );
         checkCudaErrors( cudaFree(dstData) );
-        return id;
+        return ret;
     }
 };

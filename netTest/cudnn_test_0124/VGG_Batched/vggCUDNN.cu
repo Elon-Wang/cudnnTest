@@ -143,8 +143,8 @@ int main(int argc, char *argv[])
 
         // The convolution algorithm TBD.
         // Set your conv algo.
-        vgg16.setConvolutionAlgorithm(CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD_NONFUSED);
-        // vgg16.setConvolutionAlgorithm(CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD);
+        // vgg16.setConvolutionAlgorithm(CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD_NONFUSED);
+        vgg16.setConvolutionAlgorithm(CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD);
         
         // stange things, why change the data format wont't impact the accuracy?
         vgg16.setTensorFormat(CUDNN_TENSOR_NCHW);
@@ -152,38 +152,47 @@ int main(int argc, char *argv[])
 
         // float time[1000];
         int result[1000];
+        std::vector<int> ret;
         int err = 0;
-        int Round = 20;
+        int Round = 10;
         warmup<<<1,1>>>();
+        n =64;
 
         for(int i=0; i< Round;i++) {
             
             if (i %50 ==0)
                 std::cout << "Performing forward propagation "<<  (100*i/(float)Round) <<"% ...\n";
-            //single Batch testing
-            char image_name[30] = "./binImage/Batch1/img";
-            char str2[5];
-            const char str3[] = ".bin";
-            std::sprintf(str2, "%d", i);
-            std::strcat(image_name, str2);
-            std::strcat(image_name, str3);
-            // std::cout<< image_name;
-            result[i] = vgg16.classify_example_modified(image_name, conv1, conv2, conv3, conv4, conv5, conv6, conv7, conv8, conv9, conv10, conv11, conv12, conv13, fc14, fc15, fc16, n, c, side); 
+            // Batched Conv testing
+            // char file_name[30] = "./binImage/Batch2/bat2_";
+            char file_name[40]; 
+            sprintf(file_name, "./binImage/Batch%d/bat%d_%d.bin", n, n, i);
 
-            err += (result[i] == i? 1:0);
+            // char str2[5];
+            // const char str3[] = ".bin";
+            // std::sprintf(str2, "%d", i);
+            // std::strcat(file_name, str2);
+            // std::strcat(file_name, str3);
+            // std::cout<< image_name;
+            ret = vgg16.classify_example_modified(file_name, conv1, conv2, conv3, conv4, conv5, conv6, conv7, conv8, conv9, conv10, conv11, conv12, conv13, fc14, fc15, fc16, n, c, side); 
+
+            for(int j=0; j<n; j++) {
+                err += (ret[j] == (i*n+j) ? 1:0);
+                result[i*n + j] = ret[j];
+            }
+            
             // multi-batch testing
             // const char image_name[] = "vggData/img0.bin";
             //vgg16.classify_example_modified(image_name, conv1, conv2, conv3, conv4, conv5, conv6, conv7, conv8, conv9, conv10, conv11, conv12, conv13, fc14, fc15, fc16, n, c, side); 
         }
 
         // print out the result;
-        printf("Acc: %f %%\n", (100*err/(float)Round));
+        printf("Acc: %f %%\n", (100*err/(float)(Round*n)));
         const char* filename = "result/CNNprediction.bin";
         const char* changeLine = "\n"; 
         FILE* ptr = fopen(filename,"w");
         fclose(ptr);
         ptr = fopen(filename,"a");
-        for(int i=0;i<Round;i++) {
+        for(int i=0;i<Round*n;i++) {
             fwrite((result+i),sizeof(int),1,ptr);
             fwrite(changeLine, sizeof(char),1,ptr);
         }
