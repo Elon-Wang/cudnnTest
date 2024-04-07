@@ -143,8 +143,8 @@ int main(int argc, char *argv[])
 
         // The convolution algorithm TBD.
         // Set your conv algo.
-        // vgg16.setConvolutionAlgorithm(CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD_NONFUSED);
-        vgg16.setConvolutionAlgorithm(CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD);
+        vgg16.setConvolutionAlgorithm(CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD_NONFUSED);
+        // vgg16.setConvolutionAlgorithm(CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD);
         
         // stange things, why change the data format wont't impact the accuracy?
         vgg16.setTensorFormat(CUDNN_TENSOR_NCHW);
@@ -156,7 +156,8 @@ int main(int argc, char *argv[])
         int err = 0;
         int Round = 10;
         warmup<<<1,1>>>();
-        n =64;
+        n =10;
+        bool customizedModuleChoice = false;
 
         for(int i=0; i< Round;i++) {
             
@@ -173,7 +174,7 @@ int main(int argc, char *argv[])
             // std::strcat(file_name, str2);
             // std::strcat(file_name, str3);
             // std::cout<< image_name;
-            ret = vgg16.classify_example_modified(file_name, conv1, conv2, conv3, conv4, conv5, conv6, conv7, conv8, conv9, conv10, conv11, conv12, conv13, fc14, fc15, fc16, n, c, side); 
+            ret = vgg16.classify_example_modified(file_name, conv1, conv2, conv3, conv4, conv5, conv6, conv7, conv8, conv9, conv10, conv11, conv12, conv13, fc14, fc15, fc16, n, c, side, customizedModuleChoice); 
 
             for(int j=0; j<n; j++) {
                 err += (ret[j] == (i*n+j) ? 1:0);
@@ -193,8 +194,9 @@ int main(int argc, char *argv[])
         fclose(ptr);
         ptr = fopen(filename,"a");
         for(int i=0;i<Round*n;i++) {
-            fwrite((result+i),sizeof(int),1,ptr);
-            fwrite(changeLine, sizeof(char),1,ptr);
+            // fwrite((result+i),sizeof(int),1,ptr);
+            // fwrite(changeLine, sizeof(char),1,ptr);
+            fprintf(ptr,"%d ",*(result+i));
         }
 
         // std::cout << "\nResult of classification: " << i1 << std::endl;

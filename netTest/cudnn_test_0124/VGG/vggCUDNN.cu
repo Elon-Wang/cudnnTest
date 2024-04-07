@@ -155,6 +155,7 @@ int main(int argc, char *argv[])
         int err = 0;
         int Round = 20;
         warmup<<<1,1>>>();
+        bool customizedModuleChoice = true;
 
         for(int i=0; i< Round;i++) {
             
@@ -168,7 +169,7 @@ int main(int argc, char *argv[])
             std::strcat(image_name, str2);
             std::strcat(image_name, str3);
             // std::cout<< image_name;
-            result[i] = vgg16.classify_example_modified(image_name, conv1, conv2, conv3, conv4, conv5, conv6, conv7, conv8, conv9, conv10, conv11, conv12, conv13, fc14, fc15, fc16, n, c, side); 
+            result[i] = vgg16.classify_example_modified(image_name, conv1, conv2, conv3, conv4, conv5, conv6, conv7, conv8, conv9, conv10, conv11, conv12, conv13, fc14, fc15, fc16, n, c, side, customizedModuleChoice); 
 
             err += (result[i] == i? 1:0);
             // multi-batch testing

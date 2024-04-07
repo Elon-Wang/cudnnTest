@@ -448,7 +448,7 @@ class network_t
                           const Layer_t<value_type>& fc14,
                           const Layer_t<value_type>& fc15,
                           const Layer_t<value_type>& fc16,
-                          const int batch, const int chn, const int side)
+                          const int batch, const int chn, const int side, bool testChoice)
     {
 
         // TBD
@@ -510,8 +510,6 @@ class network_t
         cudaEventCreate(&stop1);
 
         cudaEventRecord(start1, NULL);
-
-        bool testChoice = false;
 
         convMethodChoose(conv1, n, c, h, w, srcData, &dstData, testChoice);
         activationForward(n, c, h, w, dstData, &srcData);
