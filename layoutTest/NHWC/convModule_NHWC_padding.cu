@@ -5,8 +5,15 @@
 // function defination
 
 int main(int argc, char** argv){
-    const char inputname[] = "./data/input.bin";
-    const char filtername[] = "./data/filter.bin";
+    const char dirPath[] = "~/project/cudnnTest/layoutTest";
+    char inputname[100];
+    char filtername[100];
+    strcpy(inputname, dirPath);
+    strcpy(filtername, dirPath);
+    strcat(inputname, "/data/input.bin");
+    strcat(filtername, "/data/filter.bin");
+
+    // printf("%s",inputname);
 
     // int bat4Conv = atoi(argv[1]);
     // int inside = atoi(argv[2]);
@@ -69,10 +76,28 @@ int main(int argc, char** argv){
     
     // wrapedConv_NCHW(bat4Conv, inside, chn, numOfFilter, padding , input_gpu, filter_gpu,convOutput_gpu);
     // modify the following code to make it right, you'd also need to define the mem space;
-    wrapedConv_NHWC(bat4Conv, inside, chn, numOfFilter, padding, input_gpu, filter_gpu,  inputTran_gpu, filterTran_gpu, gemmOutput_gpu, &convOutput_gpu);
+    float avetime = 0;
+    cudaEvent_t start1,stop1;
+    cudaEventCreate(&start1);
+    cudaEventCreate(&stop1);
+    cudaEventRecord(start1, NULL);  
+    for(int x=0;x<10;x++){
+        wrapedConv_NHWC(bat4Conv, inside, chn, numOfFilter, padding, input_gpu, filter_gpu,  inputTran_gpu, filterTran_gpu, gemmOutput_gpu, &convOutput_gpu);
+    }
+    cudaEventRecord(stop1, NULL);
+    cudaEventSynchronize(start1);
+    cudaEventSynchronize(stop1);
+    cudaEventElapsedTime(&avetime, start1, stop1);
 
     float *convOutput_cpu = (float *)malloc(nConvOutput * sizeof(float));
     cudaMemcpy(convOutput_cpu, convOutput_gpu, nConvOutput<<2, cudaMemcpyDeviceToHost);
+
+    avetime = avetime/10;
+    double FLOP = ((3*3*chn)*chn + chn)*1.0e-9*inside*inside*bat4Conv;
+    double tflops = (FLOP/avetime);
+
+    // printf("Batch:%d Inside:%d chn:%d\n",Batch,inside,chn);
+    printf("time:%lf us TFLOPS:%lf\n",(avetime)*1000,tflops);
     
     printf("convOutput_cpu[0]:%lf\n",convOutput_cpu[0]);
     if ( convOutput_cpu[0] == 0.0f) {
