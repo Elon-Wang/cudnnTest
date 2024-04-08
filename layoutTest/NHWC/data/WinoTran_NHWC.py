@@ -5,9 +5,9 @@ from numpy.random import *
 
 def Wino_inputTran(x_4d,padding):
     batch    = x_4d.shape[0]
-    height   = x_4d.shape[2]
-    width    = x_4d.shape[3] 
-    channel  = x_4d.shape[1]
+    height   = x_4d.shape[1]
+    width    = x_4d.shape[2] 
+    channel  = x_4d.shape[3]
 
     inside = height
     assert (height == width)
@@ -38,8 +38,8 @@ def Wino_inputTran(x_4d,padding):
     K = channel
     KSize = (int((K-1)/8)+1)*8
     
-    # WTF of the CHWN code?????
-    x_4d = np.pad(x_4d, [(0,0), (0,KSize-K),(padding, inside_beta - inside-padding), (padding, inside_beta - inside- padding)], mode='constant')
+
+    x_4d = np.pad(x_4d,[(0,0),(padding, inside_beta - inside-padding), (padding, inside_beta - inside- padding), (0,KSize-K)], mode='constant')
     inputTran = np.zeros((36,KSize,MSize)).astype(np.float32)
     
     for i in range(channel):
@@ -48,7 +48,7 @@ def Wino_inputTran(x_4d,padding):
                 for n in range(batch):
                     iny = 4*j
                     inx = 4*k
-                    cache = x_4d[n,i,iny:iny+6,inx:inx+6]
+                    cache = x_4d[n,iny:iny+6,inx:inx+6,i]
                     inputTran[:,i,j*blockn*batch+k*batch+n] = (B.T@cache@B).reshape(-1)
     return inputTran
 
@@ -69,10 +69,11 @@ def Wino_inputTran(x_4d,padding):
 #     return c
 
 def Wino_kernelTran(k_4d):
-    chn         = k_4d.shape[1]
-    height      = k_4d.shape[2]
-    width       = k_4d.shape[3] 
     numOfFilter = k_4d.shape[0]
+    height      = k_4d.shape[1]
+    width       = k_4d.shape[2]
+    chn         = k_4d.shape[3]
+    
     
     assert(height == width)
     assert(height == 3)
@@ -97,12 +98,12 @@ def Wino_kernelTran(k_4d):
     K = chn
     KSize = (int((K-1)/8)+1)*8
     
-    k_4d = np.pad(k_4d, [(0,KSize-K),(0, 0), (0, 0), (0,NSize-N)], mode='constant')
+    k_4d = np.pad(k_4d, [(0,NSize-N),(0, 0), (0, 0), (0,KSize-K)], mode='constant')
     kernelTran = np.zeros((36,KSize,NSize)).astype(np.float32)
 #     print(kernelTran.shape)
     for m in range(chn):
         for n in range(numOfFilter):
-            cache = k_4d[n,m,:,:]
+            cache = k_4d[n,:,:,m]
             kernelTran[:,m,n] = (G@cache@G.T).reshape(-1)
     return kernelTran
 
@@ -175,8 +176,8 @@ def Wino_inverseTran(outputTran,chn, batch, blockn,oside):
     
     oside_beta = blockn *4
     
-    output = np.zeros((batch , chn,oside_beta,oside_beta)).astype(np.float32)
-    finalOutput = np.zeros((batch,chn,oside,oside)).astype(np.float32)
+    output = np.zeros((batch , oside_beta,oside_beta, chn)).astype(np.float32)
+    finalOutput = np.zeros((batch,oside,oside, chn)).astype(np.float32)
     
     A = np.array([[ 1, 0, 0, 0],
                   [ 1, 1, 1, 1],
@@ -192,36 +193,36 @@ def Wino_inverseTran(outputTran,chn, batch, blockn,oside):
                 for y in range (blockn):
                     cache = outputTran[n,c,6*y:6*y+6,6*x:6*x+6]
                     # take care of the A and A.T, which one is in the lead and which one is following
-                    output[n,c,4*y:4*y+4,4*x:4*x+4] = A.T@cache@A    
+                    output[ n, 4*y:4*y+4, 4*x:4*x+4, c] = A.T@cache@A    
                     # take care of the leading dimension of the cache.
-    finalOutput = output[:,:,0:oside,0:oside]
+    finalOutput = output[:,0:oside,0:oside,:]
     return finalOutput
 
 # Ground-Truth Naive Convolution of NCHW data layout
-def Conv_NCHW(sample_input, sample_kernel,padding):
+def Conv_NHWC(sample_input, sample_kernel,padding):
     assert(len(sample_input.shape)==4)
     assert(len(sample_kernel.shape)==4)
-    assert(sample_input.shape[1]== sample_kernel.shape[1])
+    assert(sample_input.shape[3]== sample_kernel.shape[3])
     
-    sample_input = np.pad(sample_input, [(0,0),(0,0),(padding, padding), (padding, padding)], mode='constant')
+    sample_input = np.pad(sample_input, [(0,0),(padding, padding), (padding, padding) ,(0,0)], mode='constant')
     
-    chn = sample_input.shape[1]
-    inside = sample_input.shape[2]
+    chn = sample_input.shape[3]
+    inside = sample_input.shape[1]
     numOfConv = sample_input.shape[0]
     numOfFilter = sample_kernel.shape[0]
     oside = inside -2
 
 #     print(chn, inside, numOfConv, numOfFilter)
-    c = np.zeros((numOfConv,numOfFilter,oside,oside)).astype(np.float32)
+    c = np.zeros((numOfConv,oside,oside,numOfFilter)).astype(np.float32)
 
     for chn_out in range(numOfFilter):
         for bat in range(numOfConv):
             for x in range(oside):
                 for y in range(oside):
-                    a = sample_input[bat,:,x:x+3,y:y+3].astype(np.float32)
-                    b = sample_kernel[chn_out,:,:,:].astype(np.float32)
+                    a = sample_input[bat,x:x+3,y:y+3, :].astype(np.float32)
+                    b = sample_kernel[chn_out,:,:, :].astype(np.float32)
 #                     assert(a.shape == b.shape)
-                    c[bat,chn_out,x,y] = np.sum(np.multiply(a,b)).astype(np.float32)
+                    c[bat,x,y,chn_out] = np.sum(np.multiply(a,b)).astype(np.float32)
 #         progress = 100*(chn_out+1)/(numOfFilter)
 #         print(round(progress,1),"% finished")          
         
