@@ -39,24 +39,33 @@ void wrapedConv_NHWC(int bat4Conv, int inside, int& chn, int numOfFilter, int pa
     // int nInputTran = 36*MSize*KSize;
     // int nFilterTran = 36*MSize*KSize;
 
+    cudaEvent_t t1,t2,t3,t4,t5;
+    cudaEventCreate(&t1);
+    cudaEventCreate(&t2);
+    cudaEventCreate(&t3);
+    cudaEventCreate(&t4);
+    cudaEventCreate(&t5);
+    cudaEventRecord(t1, NULL);  
+
     // printf("blockn, bat4Conv, chn = %d %d %d\n inside, inside_beta, MSize, KSize = %d,%d,%d,%d\n",blockn, bat4Conv, chn, inside, inside_beta,MSize,KSize);
 
     // wino_input_trans_nhwc_suitFor128<<< dim3(1, 1, 1), dim3(1,1,1)>>>(inside, inside_beta, MSize, KSize, padding, m1, inputTran_gpu );
     wino_input_trans_nhwc_suitFor128<<< dim3(blockn, blockn, bat4Conv), dim3(chn,1,1)>>>(inside, inside_beta, MSize, KSize, padding, m1, inputTran_gpu );
     
+    cudaEventRecord(t2, NULL);  
     // float *output2 =(float *)malloc(nInputTran * sizeof(float));
     // cudaMemcpy(output2, inputTran_gpu, nInputTran<<2, cudaMemcpyDeviceToHost);
     // printf("2st:%f\n",output2[0]);
 
     wino_kernel_trans_nhwc_suitFor128<<< dim3(numOfFilter,1,1), dim3(chn,1,1)>>>(NSize, KSize, m2, filterTran_gpu);
-    // wino_kernel_trans_nhwc_suitFor128<<< dim3(1,1,1), dim3(1,1,1)>>>(NSize, KSize, m2, filterTran_gpu); 
+    // wino_kernel_trans_nhwc_suitFor128<<< dim3(1,1,1), dim3(1,1,1)>>>(NSize, KSize, m2, filterTran_gpu);
+    cudaEventRecord(t3, NULL);  
     // float *output3 =(float *)malloc(nFilterTran * sizeof(float));
     // cudaMemcpy(output3, filterTran_gpu, nFilterTran<<2, cudaMemcpyDeviceToHost);
     // printf("3st:%f\n",output3[0]);
     
-    // GEMM_batch_256_128x128_KMKN<<< dim3(blockx, blocky, bat4Gemm), dim3(256,1,1)>>>(MSize,NSize,KSize,1, inputTran_gpu, filterTran_gpu,0, gemmOutput_gpu);
-    //TODO:
-    GEMM_batch_256_128x128_MKNK<<<dim3(blockx, blocky, bat4Gemm), dim3(256,1,1)>>>(MSize, NSize, KSize, 1, inputTran_gpu, filterTran_gpu, 0, gemmOutput_gpu);
+    GEMM_batch_256_128x128_KMKN<<< dim3(blockx, blocky, bat4Gemm), dim3(256,1,1)>>>(MSize,NSize,KSize,1, inputTran_gpu, filterTran_gpu,0, gemmOutput_gpu);
+    cudaEventRecord(t4, NULL);  
     // int nGemmOutput = 36*MSize*NSize;
     // float *output1 =(float *)malloc(nGemmOutput * sizeof(float));
     // cudaMemcpy(output1, gemmOutput_gpu, nGemmOutput<<2, cudaMemcpyDeviceToHost);
@@ -65,6 +74,25 @@ void wrapedConv_NHWC(int bat4Conv, int inside, int& chn, int numOfFilter, int pa
 
 
     chn = numOfFilter;
+
+    cudaDeviceSynchronize();
+    cudaEventRecord(t5, NULL);
+
+    cudaEventSynchronize(t1);
+    cudaEventSynchronize(t2);
+    cudaEventSynchronize(t3);
+    cudaEventSynchronize(t4);
+    cudaEventSynchronize(t5);
+    float time1,time2,time3,time4 = 0;
+    cudaEventElapsedTime(&time1, t1, t2);
+    cudaEventElapsedTime(&time2, t2, t3);
+    cudaEventElapsedTime(&time3, t3, t4);
+    cudaEventElapsedTime(&time4, t4, t5);
+
+    printf("Momule1 time:%lf us \n",(time1)*1000);
+    printf("Momule2 time:%lf us \n",(time2)*1000);
+    printf("Momule3 time:%lf us \n",(time3)*1000);
+    printf("Momule4 time:%lf us \n",(time4)*1000);
     
 }
 /*
@@ -72,7 +100,6 @@ void wrapedConv_NHWC(int bat4Conv, int inside, int& chn, int numOfFilter, int pa
     The block config should be (blockx, blocky, batch).
     The M-dim of the GEMM should be arranged as blockx * blocky * bat4Conv, bat4Conv is the last dimension.
 */
-// change to MKNK output
 __global__ void wino_input_trans_nhwc_suitFor128(int side, int side_beta, int MSize, int KSize, int padding, float * pInputs, float* pOutputs){
     int tidx = threadIdx.x; // chn_in
     int bidx = blockIdx.x;  // blockn.x
@@ -90,8 +117,8 @@ __global__ void wino_input_trans_nhwc_suitFor128(int side, int side_beta, int MS
     // take care of x-direction and y direction.
     pInputs = &pInputs[tidx + bidx*4*totalChn +bidy*4*inside*totalChn + bidz*inside*inside*totalChn - padding*(padding+inside)*totalChn ];
     // take care  of the M = blockn * blockn * batch, and the order of them.
-    pOutputs = &pOutputs[tidx + bidz*KSize + bidx*numOfBatch*KSize + bidy*numOfBatch*blockn*KSize];
-    // pOutputs = &pOutputs[tidx + bidx*numOfBatch + bidy*numOfBatch*blockn + bidx*MSize ];
+    pOutputs = &pOutputs[bidz + bidx*numOfBatch + bidy*numOfBatch*blockn + tidx*MSize ];
+    // pOutputs = &pOutputs[tidx + bidz*KSize + bidx*numOfBatch*KSize + bidy*numOfBatch*blockn*KSize];
 
     // Try float4 or float3, how to compatible float4 with flexible inside
     for( int i =0;i<6;i++) {
@@ -126,7 +153,6 @@ __global__ void wino_input_trans_nhwc_suitFor128(int side, int side_beta, int MS
     } 
 }
 
-// change to MKNK output
 __global__ void wino_kernel_trans_nhwc_suitFor128(int NSize, int KSize, float * pInputs, float* pOutputs){
     int tidx = threadIdx.x;  // chn_in
     int bid  = blockIdx.x;   // numOfFilter
@@ -136,7 +162,7 @@ __global__ void wino_kernel_trans_nhwc_suitFor128(int NSize, int KSize, float * 
 
     float Mread[3][3] ={{0}};
     pInputs = &pInputs[tidx + bid *3*3*gridDim.x ];
-    pOutputs = &pOutputs[tidx + bid*KSize];
+    pOutputs = &pOutputs[tidx*NSize + bid];
 
     #pragma unroll
     for (int i= 0; i<3; i++) {

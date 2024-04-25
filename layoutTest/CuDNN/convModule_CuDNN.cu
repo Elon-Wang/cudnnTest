@@ -1,7 +1,8 @@
 #include "cudnn.h"
 #include <cuda_runtime.h>
 #include <stdio.h>
-#include "../include/para.c"
+// #include "../include/para.c"
+#include "util.h"
 #include <string.h>
 
 int main(int argc, char** argv){
@@ -9,33 +10,34 @@ int main(int argc, char** argv){
     /*----------input file-------------*/
     // printf("Implicit_gemm:0 Implicit_precomp_gemm:1 GEMM:2\n");
     // printf("Winograd:6 Wino_nonfused:7\n");
-
-    const char inputname[] = "../../delayTest/testbench/src/M1/data/input.bin";
-    const char filtername[] = "../../delayTest/testbench/src/M2/data/kernel.bin";
-    const char outputName[] = "../data/Cu_output2.bin";
+    const char dirPath[] = "/home/wangq/project/cudnnTest/layoutTest/CuDNN";
+    char inputName[100];
+    char filterName[100];
+    strcpy(inputName, dirPath);
+    strcpy(filterName, dirPath);
+    strcat(inputName, "/data/input.bin");
+    strcat(filterName, "/data/filter.bin");
 
     /*----------parameters & data setup-------------*/
-    // int model = atoi(argv[1]);
-    // int bat4Conv = atoi(argv[1]);
-    // int inside = atoi(argv[2]);
-    // int chn = atoi(argv[3]);
-    // int numOfFilter = atoi(argv[4]);
-
-    cudnnConvolutionFwdAlgo_t model = CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD_NONFUSED;
-    int bat4Conv = 64;
-    int inside = 22;
-    int chn =128;
-    int numOfFilter = 128;
-
+    // int bat4Conv = 64;
+    // int inside = 22;
+    // int chn =128;
+    // int numOfFilter = 128;
+    // int padding = 1;
+    int bat4Conv = atoi(argv[1]);
+    int inside = atoi(argv[2]);
+    int chn = atoi(argv[3]);
+    int numOfFilter = atoi(argv[4]);
+    cudnnConvolutionFwdAlgo_t model = (argc ==5)? CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD_NONFUSED: (cudnnConvolutionFwdAlgo_t) atoi(argv[5]);
     int padding = 1;
-    int oside = inside + 2*padding-2;
 
+    int oside = inside + 2*padding-2;
     int nInput = bat4Conv*inside*inside*chn;
     int nFilter = numOfFilter*3*3*chn;
     int nOutput = bat4Conv*oside*oside*numOfFilter;
 
-    float *input_cpu  = get_parameter(inputname , nInput);
-    float *filter_cpu = get_parameter(filtername, nFilter);
+    float *input_cpu  = get_parameter(inputName , nInput);
+    float *filter_cpu = get_parameter(filterName, nFilter);
     float *output_cpu = (float*) malloc(nOutput*4);
 
     float *input_gpu,*filter_gpu,*output_gpu;
@@ -62,11 +64,11 @@ int main(int argc, char** argv){
     cudnnFilterDescriptor_t wdesc; // CUDNN_TENSOR_NHWC, CUDNN_TENSOR_NCHW
     status = cudnnCreateTensorDescriptor(&xdesc);
     if (status != CUDNN_STATUS_SUCCESS) printf("failed2\n");
-    status = cudnnSetTensor4dDescriptor(xdesc, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, Batch, chn, inside, inside);//input
+    status = cudnnSetTensor4dDescriptor(xdesc, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, bat4Conv, chn, inside, inside);//input
     if (status != CUDNN_STATUS_SUCCESS) printf("failed3\n");
     status = cudnnCreateTensorDescriptor(&ydesc);
     if (status != CUDNN_STATUS_SUCCESS) printf("failed4\n");
-    status = cudnnSetTensor4dDescriptor(ydesc, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, Batch, numOfFilter, oside, oside);//output
+    status = cudnnSetTensor4dDescriptor(ydesc, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, bat4Conv, numOfFilter, oside, oside);//output
     if (status != CUDNN_STATUS_SUCCESS) printf("failed5\n");
     status = cudnnCreateFilterDescriptor(&wdesc);
     if (status != CUDNN_STATUS_SUCCESS) printf("failed6\n");
@@ -120,13 +122,17 @@ int main(int argc, char** argv){
     cudaMemcpy(output_cpu, output_gpu, nOutput<<2, cudaMemcpyDeviceToHost);
     
     avetime = avetime/10;
-    double FLOP = ((3*3*chn)*chn + chn)*1.0e-9*inside*inside*Batch;
+    double FLOP = ((3*3*chn)*chn + chn)*1.0e-9*inside*inside*bat4Conv;
     double tflops = (FLOP/avetime);
 
     // printf("Batch:%d Inside:%d chn:%d\n",Batch,inside,chn);
     printf("time:%lf us TFLOPS:%lf\n",(avetime)*1000,tflops);
     
     /*  4. Copy back and free  */
+     char outputName[100];
+    strcpy(outputName, dirPath);
+    strcat(outputName, "/data/ConvModule_CuDNN.bin");
+    // printf("outputName path:%s\n",outputName);
     int cnt = save_parameter(outputName, nOutput, output_cpu);
     
     cudnnDestroy(handle);

@@ -3,9 +3,10 @@
 // #include "winotrans.cuh"
 
 // function defination
+__global__ void warmup(){}
 
 int main(int argc, char** argv){
-    const char dirPath[] = "~/project/cudnnTest/layoutTest";
+    const char dirPath[] = "/home/wangq/project/cudnnTest/layoutTest/NHWC";
     char inputname[100];
     char filtername[100];
     strcpy(inputname, dirPath);
@@ -13,21 +14,19 @@ int main(int argc, char** argv){
     strcat(inputname, "/data/input.bin");
     strcat(filtername, "/data/filter.bin");
 
-    // printf("%s",inputname);
-
-    // int bat4Conv = atoi(argv[1]);
-    // int inside = atoi(argv[2]);
-    // int chn = atoi(argv[3]);
-    // int numOfFilter = atoi(argv[4]);
-    // int padding = 1;
+    int bat4Conv = atoi(argv[1]);
+    int inside = atoi(argv[2]);
+    int chn = atoi(argv[3]);
+    int numOfFilter = atoi(argv[4]);
+    int padding = 1;
 
 
     // to better customize
-    int bat4Conv = 64;
-    int inside = 22;
-    int chn = 128;
-    int numOfFilter = 128;
-    int padding =1;
+    // int bat4Conv = 64;
+    // int inside = 22;
+    // int chn = 128;
+    // int numOfFilter = 128;
+    // int padding =1;
 
     //So strange here, why all of this work when I add this "+1", need to figure out !!!
     int nInput = bat4Conv * inside * inside * (chn) +1;
@@ -48,8 +47,12 @@ int main(int argc, char** argv){
     int nFilterTran = 36*NSize*KSize;
     int nGemmOutput = 36*MSize*NSize;
 
+    // printf("reading file\n");
+    // printf("%s\n%s\n", inputname, filtername);
     float *input_cpu = get_parameter(inputname, nInput);
     float *filter_cpu = get_parameter(filtername, nFilter);
+    // printf("end of reading file\n");
+
     float *input_gpu, *filter_gpu;  //, *output_gpu;
     cudaMalloc((void **) &input_gpu, nInput<<2);
     cudaMalloc((void **) &filter_gpu, nFilter<<2);
@@ -73,6 +76,7 @@ int main(int argc, char** argv){
     cudaMalloc((void **) &gemmOutput_gpu, nGemmOutput<<2);
 
     printf("inside: %d, oside:%d\n",inside,oside);
+    warmup<<<1,1>>>();
     
     // wrapedConv_NCHW(bat4Conv, inside, chn, numOfFilter, padding , input_gpu, filter_gpu,convOutput_gpu);
     // modify the following code to make it right, you'd also need to define the mem space;
@@ -106,8 +110,11 @@ int main(int argc, char** argv){
     }
 
     //used for debug;
-    const char finalName[] = "./data/ConvModule_NHWC.bin";
-    int cnt4 = save_parameter(finalName, nConvOutput, convOutput_cpu);
+    char outputName[100];
+    strcpy(outputName, dirPath);
+    strcat(outputName, "/data/ConvModule_NHWC.bin");
+    // printf("outputName path:%s\n",outputName);
+    int cnt4 = save_parameter(outputName, nConvOutput, convOutput_cpu);
 
     return 0;
 }

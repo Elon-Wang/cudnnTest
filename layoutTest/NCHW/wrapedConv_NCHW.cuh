@@ -79,7 +79,7 @@ void wrapedConv_NCHW(int bat4Conv, int inside, int& chn, int numOfFilter, int pa
     // wino_kernel_trans_chwn_suitFor128<<<dim3(chn,1,1) , dim3(numOfFilter,1,1) >>>( NSize, KSize, m2, filterTran_gpu);
 
 
-    wino_input_trans_nchw_suitFor128<<<dim3(chn,blockn,blockn),dim3(bat4Conv,1,1)>>>(inside, inside_beta, MSize, KSize, padding, m1, inputTran_gpu );
+    wino_input_trans_nchw_suitFor128<<<dim3(chn,blockn,blockn),dim3(bat4Conv,1,1)>>>(inside, inside_beta, MSize, KSize, padding, m1, inputTran_gpu);
 
     // float *output1 =(float *)malloc(nInputTran * sizeof(float));
     // cudaMemcpy(output1, inputTran_gpu, nInputTran<<2, cudaMemcpyDeviceToHost);
@@ -100,7 +100,7 @@ void wrapedConv_NCHW(int bat4Conv, int inside, int& chn, int numOfFilter, int pa
     // cudaMalloc((void **) &testOutput, nConvOutput<<2);
     wino_invers_nchw_suitFor128<<<dim3(bat4Conv, blockn, blockn), dim3(numOfFilter,1,1)>>>(oside, MSize, NSize, gemmOutput_gpu, *output);
     // printf("blockn:%d\n",blockn);
-    printf("all fun finished\n");
+    // printf("all fun finished\n");
 
     chn = numOfFilter;
 

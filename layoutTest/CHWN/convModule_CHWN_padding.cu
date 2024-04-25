@@ -1,26 +1,32 @@
-
 #include "wrapedConv_CHWN.cuh"
 // #include "winotrans.cuh"
 
 // function defination
 
 int main(int argc, char** argv){
-    const char inputname[] = "./data/input.bin";
-    const char filtername[] = "./data/filter.bin";
+    // const char inputname[] = "./data/input.bin";
+    // const char filtername[] = "./data/filter.bin";
+    const char dirPath[] = "/home/wangq/project/cudnnTest/layoutTest/CHWN";
+    char inputname[100];
+    char filtername[100];
+    strcpy(inputname, dirPath);
+    strcpy(filtername, dirPath);
+    strcat(inputname, "/data/input.bin");
+    strcat(filtername, "/data/filter.bin");
 
-    // int bat4Conv = atoi(argv[1]);
-    // int inside = atoi(argv[2]);
-    // int chn = atoi(argv[3]);
-    // int numOfFilter = atoi(argv[4]);
-    // int padding = 1;
+    int bat4Conv = atoi(argv[1]);
+    int inside = atoi(argv[2]);
+    int chn = atoi(argv[3]);
+    int numOfFilter = atoi(argv[4]);
+    int padding = 1;
 
 
     // to better customize
-    int bat4Conv = 64;
-    int inside = 22;
-    int chn = 128;
-    int numOfFilter = 128;
-    int padding =1;
+    // int bat4Conv = 64;
+    // int inside = 22;
+    // int chn = 128;
+    // int numOfFilter = 128;
+    // int padding =1;
 
     //So strange here, why all of this work when I add this "+1", need to figure out !!!
     int nInput = bat4Conv * inside * inside * (chn) +1;
@@ -86,7 +92,7 @@ int main(int argc, char** argv){
     cudaMemcpy(convOutput_cpu, convOutput_gpu, nConvOutput<<2, cudaMemcpyDeviceToHost);
     
     avetime = avetime/10;
-    double FLOP = ((3*3*chn)*chn + chn)*1.0e-9*inside*inside*Batch;
+    double FLOP = ((3*3*chn)*chn + chn)*1.0e-9*inside*inside*bat4Conv;
     double tflops = (FLOP/avetime);
 
     // printf("Batch:%d Inside:%d chn:%d\n",Batch,inside,chn);
@@ -99,8 +105,11 @@ int main(int argc, char** argv){
     }
 
     //used for debug;
-    const char finalName[] = "./data/ConvModule_NHWC.bin";
-    int cnt4 = save_parameter(finalName, nConvOutput, convOutput_cpu);
+    char outputName[100];
+    strcpy(outputName, dirPath);
+    strcat(outputName, "/data/ConvModule_CHWN.bin");
+    // printf("outputName path:%s\n",outputName);
+    int cnt4 = save_parameter(outputName, nConvOutput, convOutput_cpu);
 
     return 0;
 }
