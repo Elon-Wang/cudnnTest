@@ -11,13 +11,13 @@ void wrapedConv_NCHW(int bat4Conv, int inside, int& chn, int numOfFilter, int pa
 // void wrapedConv_NCHW(int bat4Conv, int inside, int& chn, int numOfFilter, int padding, float *m1, float *m2, float ** output){
  
     // int padding =1;
-    int size = numOfFilter * chn * (inside-2+2*padding) * (inside-2+2*padding) ;
+    // int size = numOfFilter * chn * (inside-2+2*padding) * (inside-2+2*padding) ;
     
     // take care of the resize code
     // if (*output != NULL) {
     //     cudaFree(*output);
     // }
-    assert(inside >=4);
+    // assert(inside >=4);
 
     int marginOfInputSide = (inside+2*padding-6)%4;
     bool sideCheck = ( marginOfInputSide == 0 )? true: false ;
@@ -40,8 +40,8 @@ void wrapedConv_NCHW(int bat4Conv, int inside, int& chn, int numOfFilter, int pa
     //So strange here, why all of this work when I add this "+1", need to figure out !!!
     // int nInput = bat4Conv * inside * inside * (chn) +1;
     // int nFilter = 9 * numOfFilter * chn;
-    int nInputTran = 36 * MSize * KSize;
-    int nFilterTran = 36 * NSize * KSize;
+    // int nInputTran = 36 * MSize * KSize;
+    // int nFilterTran = 36 * NSize * KSize;
 
     // Could we exempt this part? just using the parameter?
     // float *input_gpu, *filter_gpu;
@@ -56,11 +56,11 @@ void wrapedConv_NCHW(int bat4Conv, int inside, int& chn, int numOfFilter, int pa
 
     //TBC, gemm part
     int blocky, blockx, bat4Gemm;
-    int nGemmOutput;
+    // int nGemmOutput;
     blockx = (M+127)/128;
     blocky = (N+127)/128;
     bat4Gemm = 36;
-    nGemmOutput = 36 * MSize*NSize;
+    // nGemmOutput = 36 * MSize*NSize;
     int oside = inside+2*padding - 2;
     // float *inputTran_gpu, *filterTran_gpu;
     // float *gemmOutput_gpu;

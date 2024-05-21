@@ -3,6 +3,7 @@
 #include "Layer.h"
 #include "matrixOp.h"
 #include "wrapedConv_NCHW.cuh"
+// #include "wrapedConv_NHWC.cuh"
 
 template <class value_type>
 class network_t
@@ -411,11 +412,14 @@ class network_t
             // cudaEventRecord(ts1, NULL);
             wrapedConv_NCHW(n, h, c, conv.outputs, 1, srcData, conv.data_d, inputTran_gpu, filterTran_gpu, gemmOutput_gpu , dstData);
             // wrapedConv_NCHW(n, h, c, conv.outputs, 1, srcData, conv.data_d, dstData);
+            // wrapedConv_NHWC(n, h, c, conv.outputs, 1, srcData, conv.data_d,  inputTran_gpu, filterTran_gpu, gemmOutput_gpu, dstData);
 
             cudaDeviceSynchronize();
             // cudaEventRecord(ts2, NULL);
             c = conv.outputs;
             setTensorDesc(dstTensorDesc, tensorFormat, dataType, n, c, h, w);
+
+            printf("addBias count\n");
             addBias(dstTensorDesc, conv, c, *dstData);
 
             // cudaEventRecord(ts3, NULL);

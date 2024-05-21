@@ -104,11 +104,11 @@ int main(int argc, char *argv[])
         int n,c,side;
         // getCmdLineArgumentString(argc, (const char **)argv,
         //                          "set", (char **) &image_name);
-        // n = getCmdLineArgumentInt(argc, (const char **)argv, "batch");
+        n = getCmdLineArgumentInt(argc, (const char **)argv, "batch");
         // c = getCmdLineArgumentInt(argc, (const char **)argv, "chn");
         // side = getCmdLineArgumentInt(argc, (const char **)argv, "side");
         
-        n = 1; c =3; side =224;
+        c =3; side =224;
         assert(side == IMAGE_H); 
         
         
@@ -125,6 +125,10 @@ int main(int argc, char *argv[])
         Layer_t<float>  conv3(  64, 128,3,conv3_bin,conv3_bias_bin,argv[0]);
         Layer_t<float>  conv4( 128, 128,3,conv4_bin,conv4_bias_bin,argv[0]);
 
+        // Layer_t<float>  conv5( 128, 128,3,conv5_bin,conv5_bias_bin,argv[0]);
+        // Layer_t<float>  conv6( 128, 128,3,conv6_bin,conv6_bias_bin,argv[0]);
+        // Layer_t<float>  conv7( 128, 256,3,conv7_bin,conv7_bias_bin,argv[0]);
+        
         Layer_t<float>  conv5( 128, 256,3,conv5_bin,conv5_bias_bin,argv[0]);
         Layer_t<float>  conv6( 256, 256,3,conv6_bin,conv6_bias_bin,argv[0]);
         Layer_t<float>  conv7( 256, 256,3,conv7_bin,conv7_bias_bin,argv[0]);
@@ -154,10 +158,10 @@ int main(int argc, char *argv[])
         int result[1000];
         std::vector<int> ret;
         int err = 0;
-        int Round = 10;
+        int Round = 3;
         warmup<<<1,1>>>();
-        n =10;
-        bool customizedModuleChoice = false;
+        // n =10;
+        bool customizedModuleChoice = true;
 
         for(int i=0; i< Round;i++) {
             
@@ -189,7 +193,7 @@ int main(int argc, char *argv[])
         // print out the result;
         printf("Acc: %f %%\n", (100*err/(float)(Round*n)));
         const char* filename = "result/CNNprediction.bin";
-        const char* changeLine = "\n"; 
+        // const char* changeLine = "\n"; 
         FILE* ptr = fopen(filename,"w");
         fclose(ptr);
         ptr = fopen(filename,"a");

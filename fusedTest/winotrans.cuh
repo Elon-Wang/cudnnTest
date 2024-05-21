@@ -45,6 +45,108 @@ __global__ void wino_input_trans_nhwc(int side, float * pInputs, float * pOutput
     }
 }
 
+__global__ void wino_input_trans_nhwc_refact(int side, float * pInputs, float * pOutputs){
+    int tid  = threadIdx.x;  // total chn is is 512, chn
+    int bidx = blockIdx.x; // total row size is 4, row
+    int bidy = blockIdx.y; // total col size is 4, col
+    int bidz = blockIdx.z;//total is 1, batch
+
+    int Inside = side;
+    int totalChn = blockDim.x;
+    int numOfBatch =  gridDim.z;
+    int blockn = 1 + (Inside-6)/4;
+
+    float Mread[6][6];
+
+    int input_loc = tidx + bidx*4*totalChn + bidy*Inside*4*totalChn + bidz*Inside*Inside*totalChn;
+
+    for(int i=0;i<6;i++){
+        for(int j=0;j<6;j++){
+            Mread[i][j] = pInputs[input_loc + j*totalChn + i*Inside*totalChn];           
+        }
+    }
+    
+    // 16 is the location, the tilesize
+    int output_loc = bidz*blockn*blockn*totalChn + tidx + bidx*totalChn + bidy*blockn*totalChn;
+
+    float Atd[6][6] = {{0}};
+
+    for(int i=0;i<6;i++){
+        Atd[0][i] = 4*Mread[0][i] - 5*Mread[2][i] + Mread[4][i];
+        Atd[1][i] = -4*Mread[1][i] -4*Mread[2][i] + Mread[3][i] + Mread[4][i];
+        Atd[2][i] = 4*Mread[1][i] -4*Mread[2][i] - Mread[3][i] + Mread[4][i];
+        Atd[3][i] = -2*Mread[1][i] - Mread[2][i] + 2*Mread[3][i] + Mread[4][i];
+        Atd[4][i] = 2*Mread[1][i] - Mread[2][i] - 2*Mread[3][i] + Mread[4][i];
+        Atd[5][i] = 4*Mread[1][i] - 5*Mread[3][i] + Mread[5][i];
+    }
+
+    int size = numOfBatch*blockn*blockn*totalChn;
+
+    for(int i=0;i<6;i++){
+        pOutputs[output_loc + i*6*size] = 4*Atd[i][0] - 5*Atd[i][2] + Atd[i][4];
+        pOutputs[output_loc + i*6*size + size] = -4*Atd[i][1] - 4*Atd[i][2] + Atd[i][3] + Atd[i][4];
+        pOutputs[output_loc + i*6*size + 2*size] = 4*Atd[i][1] - 4*Atd[i][2] - Atd[i][3] + Atd[i][4];
+        pOutputs[output_loc + i*6*size + 3*size] = -2*Atd[i][1] - Atd[i][2] + 2*Atd[i][3] + Atd[i][4];
+        pOutputs[output_loc + i*6*size + 4*size] = 2*Atd[i][1] - Atd[i][2] - 2*Atd[i][3] + Atd[i][4];
+        pOutputs[output_loc + i*6*size + 5*size] = 4*Atd[i][1] - 5*Atd[i][3] + Atd[i][5];
+    }
+}
+
+__global__ void wino_input_trans_nhwc_suitFor128(int side, int side_beta, int MSize, int KSize, int padding, float * pInputs, float* pOutputs){
+    int tidx = threadIdx.x; // chn_in
+    int bidx = blockIdx.x;  // blockn.x
+    int bidy = blockIdx.y;  // blockn.y
+    int bidz = blockIdx.z;  // batch
+
+    int totalChn = blockDim.x;
+    int blockn = gridDim.x;
+    int numOfBatch = gridDim.z;
+
+    float Mread[6][6] = {{0}};
+
+    int inside = side;
+
+    // take care of x-direction and y direction.
+    pInputs = &pInputs[tidx + bidx*4*totalChn +bidy*4*inside*totalChn + bidz*inside*inside*totalChn - padding*(padding+inside)*totalChn ];
+    // take care  of the M = blockn * blockn * batch, and the order of them.
+    pOutputs = &pOutputs[tidx + bidz*KSize + bidx*numOfBatch*KSize + bidy*numOfBatch*blockn*KSize];
+    // pOutputs = &pOutputs[tidx + bidx*numOfBatch + bidy*numOfBatch*blockn + bidx*MSize ];
+
+    // Try float4 or float3, how to compatible float4 with flexible inside
+    for( int i =0;i<6;i++) {
+        for (int j=0; j<6;j++) {
+            if ((4*bidx + j >= padding)&&( 4*bidy +i >= padding)&&(4*bidx + j <=inside-1+padding) && (4*bidy +i <= inside-1 +padding)) {
+                Mread [i][j] = pInputs[j * totalChn + i * inside * totalChn];
+            }
+        }
+    }
+
+    float Atd[6][6] = {{0}};
+
+    for(int i=0;i<6;i++){
+        Atd[0][i] = 4*Mread[0][i] - 5*Mread[2][i] + Mread[4][i];
+        Atd[1][i] = -4*Mread[1][i] -4*Mread[2][i] + Mread[3][i] + Mread[4][i];
+        Atd[2][i] = 4*Mread[1][i] -4*Mread[2][i] - Mread[3][i] + Mread[4][i];
+        Atd[3][i] = -2*Mread[1][i] - Mread[2][i] + 2*Mread[3][i] + Mread[4][i];
+        Atd[4][i] = 2*Mread[1][i] - Mread[2][i] - 2*Mread[3][i] + Mread[4][i];
+        Atd[5][i] = 4*Mread[1][i] - 5*Mread[3][i] + Mread[5][i];
+    }
+
+    int size = MSize * KSize;
+
+    #pragma unroll
+    for(int i=0;i<6;i++){
+        pOutputs[i*6*size] = 4*Atd[i][0] - 5*Atd[i][2] + Atd[i][4];
+        pOutputs[i*6*size + size] = -4*Atd[i][1] - 4*Atd[i][2] + Atd[i][3] + Atd[i][4];
+        pOutputs[i*6*size + 2*size] = 4*Atd[i][1] - 4*Atd[i][2] - Atd[i][3] + Atd[i][4];
+        pOutputs[i*6*size + 3*size] = -2*Atd[i][1] - Atd[i][2] + 2*Atd[i][3] + Atd[i][4];
+        pOutputs[i*6*size + 4*size] = 2*Atd[i][1] - Atd[i][2] - 2*Atd[i][3] + Atd[i][4];
+        pOutputs[i*6*size + 5*size] = 4*Atd[i][1] - 5*Atd[i][3] + Atd[i][5];
+    } 
+}
+
+
+
 __global__ void wino_input_trans_nhwc_new(int side, float * pInputs, float * pOutputs){
     int Inside = side;
     int deep = blockDim.x*gridDim.y;
@@ -89,6 +191,104 @@ __global__ void wino_input_trans_nhwc_new(int side, float * pInputs, float * pOu
     pOutputs[a + ty*6*size + 3*size] = -2*Atd[ty][1][chn] - Atd[ty][2][chn] + 2*Atd[ty][3][chn] + Atd[ty][4][chn];
     pOutputs[a + ty*6*size + 4*size] = 2*Atd[ty][1][chn] - Atd[ty][2][chn] - 2*Atd[ty][3][chn] + Atd[ty][4][chn];
     pOutputs[a + ty*6*size + 5*size] = 4*Atd[ty][1][chn] - 5*Atd[ty][3][chn] + Atd[ty][5][chn];
+    __syncthreads();
+}
+
+__global__ void wino_input_trans_nhwc_new_refact(int side, float * pInputs, float * pOutputs){
+    int blockn = M = 1 + (Inside-6)/4;
+    
+    int tidx = chn = threadIdx.x; // each block deal with 64 chn
+    int tidy = ty = threadIdx.y;  // use to parallem the trans 6
+
+    int blocknx = row = blockIdx.x%blockn; // total row size, row
+    int blockny = col = blockIdx.x/blockn; // total col size, col
+
+
+    int bidy = s_chn = blockIdx.y; //spilit chn (chn/64)
+    int bidz = batch = blockIdx.z;// number of graph
+    
+    
+    int Inside = side;
+    int totalChn = deep = blockDim.x*gridDim.y;
+    int numOfBatch = Nbatch = gridDim.z;
+    
+
+    __shared__ float Mread[6][6][64];
+    __shared__ float Atd[6][6][64];
+
+    int input_loc = tidx + bidy*64 + blocknx*4*totalChn + blockny*Inside*4*totalChn + bidz*Inside*Inside*totalChn + tidy*totalChn;
+
+    for(int i=0;i<6;i++){
+        Mread[i][tidy][tidx] = pInputs[input_loc + i*Inside*totalChn];           
+    }
+    __syncthreads();
+
+    int output_loc = bidz*blockn*blockn*totalChn + tidx + bidy*64 + blocknx*totalChn + blockny*blockn*totalChn;
+
+    Atd[0][tidy][tidx] =  4*Mread[0][tidy][tidx] - 5*Mread[2][tidy][tidx] +   Mread[4][tidy][tidx];
+    Atd[1][tidy][tidx] = -4*Mread[1][tidy][tidx] - 4*Mread[2][tidy][tidx] +   Mread[3][tidy][tidx] + Mread[4][tidy][tidx];
+    Atd[2][tidy][tidx] =  4*Mread[1][tidy][tidx] - 4*Mread[2][tidy][tidx] -   Mread[3][tidy][tidx] + Mread[4][tidy][tidx];
+    Atd[3][tidy][tidx] = -2*Mread[1][tidy][tidx] -   Mread[2][tidy][tidx] + 2*Mread[3][tidy][tidx] + Mread[4][tidy][tidx];
+    Atd[4][tidy][tidx] =  2*Mread[1][tidy][tidx] -   Mread[2][tidy][tidx] - 2*Mread[3][tidy][tidx] + Mread[4][tidy][tidx];
+    Atd[5][tidy][tidx] =  4*Mread[1][tidy][tidx] - 5*Mread[3][tidy][tidx] +   Mread[5][tidy][tidx];
+
+    __syncthreads();
+    
+    int size = numOfBatch * blockn * blockn * totalChn;
+
+    pOutputs[output_loc + tidy*6*size]          =  4*Atd[tidy][0][tidx] - 5*Atd[tidy][2][tidx] +   Atd[tidy][4][tidx];
+    pOutputs[output_loc + tidy*6*size + size]   = -4*Atd[tidy][1][tidx] - 4*Atd[tidy][2][tidx] +   Atd[tidy][3][tidx] + Atd[tidy][4][tidx];
+    pOutputs[output_loc + tidy*6*size + 2*size] =  4*Atd[tidy][1][tidx] - 4*Atd[tidy][2][tidx] -   Atd[tidy][3][tidx] + Atd[tidy][4][tidx];
+    pOutputs[output_loc + tidy*6*size + 3*size] = -2*Atd[tidy][1][tidx] -   Atd[tidy][2][tidx] + 2*Atd[tidy][3][tidx] + Atd[tidy][4][tidx];
+    pOutputs[output_loc + tidy*6*size + 4*size] =  2*Atd[tidy][1][tidx] -   Atd[tidy][2][tidx] - 2*Atd[tidy][3][tidx] + Atd[tidy][4][tidx];
+    pOutputs[output_loc + tidy*6*size + 5*size] =  4*Atd[tidy][1][tidx] - 5*Atd[tidy][3][tidx] +   Atd[tidy][5][tidx];
+    __syncthreads();
+}
+
+__global__ void wino_input_trans_nhwc_new_refact2(int side, float * pInputs, float * pOutputs){
+    int Inside = side;
+    int blockn = 1+ (Inside-2)/4;
+    
+    int tidx = threadIdx.x; // each for 1 chn and total size of 64 threads.
+    int tidy = threadIdx.y; // up to parallelism of 6;
+
+    int bidx = blockIdx.x;  // total number of blockn
+    int blocknx = bidx%blockn;
+    int blockny = bidx/blockn;
+
+    int bidy = blockIdx.y;  // each one corresponding for 64 chn, so equal to (totolChn/64)
+    int bidz = blockIdx.z;  // batch
+
+    totalChn = gridDim.y*64;
+    numOfBatch = gridDim.z;
+
+    pInputs  = &pInputs [tidx + tidy*totalChn + bidy*64 + blocknx *4*totalChn + blockny*4*Inside*totalChn + bidz*Inside*Inside*totalChn];
+    pOutputs = &pOutputs[tidx + bidy*64 + bidz*MSize + blocknx*numOfBatch*MSize + blockny*numOfBatch*MSize*blockn];
+
+    float Mread[6][6] = {{0}};
+
+    for(int i=0;i<6;i++){
+        Mread[i][tidy][tidx] = pInputs[input_loc + i*Inside*totalChn];           
+    }
+
+    __shared__ float Mread[6][6][64];
+    __shared__ float Atd[6][6][64];
+
+    Atd[0][tidy][tidx] =  4*Mread[0][tidy][tidx] - 5*Mread[2][tidy][tidx] +   Mread[4][tidy][tidx];
+    Atd[1][tidy][tidx] = -4*Mread[1][tidy][tidx] - 4*Mread[2][tidy][tidx] +   Mread[3][tidy][tidx] + Mread[4][tidy][tidx];
+    Atd[2][tidy][tidx] =  4*Mread[1][tidy][tidx] - 4*Mread[2][tidy][tidx] -   Mread[3][tidy][tidx] + Mread[4][tidy][tidx];
+    Atd[3][tidy][tidx] = -2*Mread[1][tidy][tidx] -   Mread[2][tidy][tidx] + 2*Mread[3][tidy][tidx] + Mread[4][tidy][tidx];
+    Atd[4][tidy][tidx] =  2*Mread[1][tidy][tidx] -   Mread[2][tidy][tidx] - 2*Mread[3][tidy][tidx] + Mread[4][tidy][tidx];
+    Atd[5][tidy][tidx] =  4*Mread[1][tidy][tidx] - 5*Mread[3][tidy][tidx] +   Mread[5][tidy][tidx];
+
+    int size = numOfBatch * blockn * blockn * totalChn;
+    
+    pOutputs[output_loc + tidy*6*size]          =  4*Atd[tidy][0][tidx] - 5*Atd[tidy][2][tidx] +   Atd[tidy][4][tidx];
+    pOutputs[output_loc + tidy*6*size + size]   = -4*Atd[tidy][1][tidx] - 4*Atd[tidy][2][tidx] +   Atd[tidy][3][tidx] + Atd[tidy][4][tidx];
+    pOutputs[output_loc + tidy*6*size + 2*size] =  4*Atd[tidy][1][tidx] - 4*Atd[tidy][2][tidx] -   Atd[tidy][3][tidx] + Atd[tidy][4][tidx];
+    pOutputs[output_loc + tidy*6*size + 3*size] = -2*Atd[tidy][1][tidx] -   Atd[tidy][2][tidx] + 2*Atd[tidy][3][tidx] + Atd[tidy][4][tidx];
+    pOutputs[output_loc + tidy*6*size + 4*size] =  2*Atd[tidy][1][tidx] -   Atd[tidy][2][tidx] - 2*Atd[tidy][3][tidx] + Atd[tidy][4][tidx];
+    pOutputs[output_loc + tidy*6*size + 5*size] =  4*Atd[tidy][1][tidx] - 5*Atd[tidy][3][tidx] +   Atd[tidy][5][tidx];
     __syncthreads();
 }
 

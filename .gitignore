@@ -10,3 +10,7 @@ netTest/cudnn_sample_modified/mnistCUDNN/data_bak/*
 **/.ipynb_checkpoints
 **/__pycache__
 netTest/cudnn_test_0124/VGG/vggCUDNN
+netTest/cudnn_test_0124/profile_data/*
+netTest/cudnn_test_0124/SimpNet_Batched
+paddingTest/
+reverseTest/

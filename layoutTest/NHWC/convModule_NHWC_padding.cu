@@ -6,7 +6,8 @@
 __global__ void warmup(){}
 
 int main(int argc, char** argv){
-    const char dirPath[] = "/home/wangq/project/cudnnTest/layoutTest/NHWC";
+    // const char dirPath[] = "/home/wangq/project/cudnnTest/layoutTest/NHWC";
+    const char dirPath[] = "/home/yelab/Desktop/workshop/cudnnTest/layoutTest/NHWC";
     char inputname[100];
     char filtername[100];
     strcpy(inputname, dirPath);
