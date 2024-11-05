@@ -1,6 +1,0 @@
-{
-    "files.associations": {
-        "*.bpred": "cpp",
-        "iostream": "cpp"
-    }
-}

@@ -14,3 +14,6 @@ netTest/cudnn_test_0124/profile_data/*
 netTest/cudnn_test_0124/SimpNet_Batched
 paddingTest/
 reverseTest/
+.vscode/settings.json
+netTest/cudnn_test_0124/VGG_Batched/vggCUDNN
+netTest/cudnn_test_0124/VGG_Batched/archived_design/
