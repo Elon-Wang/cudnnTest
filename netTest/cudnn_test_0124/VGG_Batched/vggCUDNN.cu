@@ -10,10 +10,6 @@
 #define IMAGE_H 224
 #define IMAGE_W 224
 
-const char *first_image = "one_28x28.pgm";
-const char *second_image = "three_28x28.pgm";
-const char *third_image = "five_28x28.pgm";
-
 const char *conv1_bin = "conv1.bin";
 const char *conv1_bias_bin = "conv1.bias.bin";
 const char *conv2_bin = "conv2.bin";
@@ -46,6 +42,9 @@ const char *fc15_bin = "fc15.bin";
 const char *fc15_bias_bin = "fc15.bias.bin";
 const char *fc16_bin = "fc16.bin";
 const char *fc16_bias_bin = "fc16.bias.bin";
+const char *vggData_path = "/home/wangq/Preprocessing/ModelPreprocessing/vggData_NHWC/";
+// const char *vggData_path = "/home/wangq/Preprocessing/ModelPreprocessing/vggData/";
+// const char *vggData_path = "./vggData/";
 
 static char * baseFile(char *fname) 
 {
@@ -90,12 +89,12 @@ int main(int argc, char *argv[])
     printf("Host compiler version : %s %s\n", COMPILER_NAME, COMPILER_VER);
     showDevices();
 
-    int device = 0;
+    int device = 1;
     if (checkCmdLineFlag(argc, (const char **)argv, "device"))
     {
         device = getCmdLineArgumentInt(argc, (const char **)argv, "device");
-        checkCudaErrors( cudaSetDevice(device) );
     }
+    checkCudaErrors( cudaSetDevice(device) );
     std::cout << "Using device " << device << std::endl;
 
     if (checkCmdLineFlag(argc, (const char **)argv, "set"))
@@ -114,36 +113,30 @@ int main(int argc, char *argv[])
         
         // The network arichtecture TBD.
         network_t<float> vgg16;
-        // Layer_t<float> conv1(1,20,5,conv1_bin,conv1_bias_bin,argv[0]);
-        // Layer_t<float> conv2(20,50,5,conv2_bin,conv2_bias_bin,argv[0]);
-        // Layer_t<float>   ip1(800,500,1,ip1_bin,ip1_bias_bin,argv[0]);
-        // Layer_t<float>   ip2(500,10,1,ip2_bin,ip2_bias_bin,argv[0]);
 
-        Layer_t<float>  conv1(   3,  64,3,conv1_bin,conv1_bias_bin,argv[0]);
-        Layer_t<float>  conv2(  64,  64,3,conv2_bin,conv2_bias_bin,argv[0]);
 
-        Layer_t<float>  conv3(  64, 128,3,conv3_bin,conv3_bias_bin,argv[0]);
-        Layer_t<float>  conv4( 128, 128,3,conv4_bin,conv4_bias_bin,argv[0]);
 
-        // Layer_t<float>  conv5( 128, 128,3,conv5_bin,conv5_bias_bin,argv[0]);
-        // Layer_t<float>  conv6( 128, 128,3,conv6_bin,conv6_bias_bin,argv[0]);
-        // Layer_t<float>  conv7( 128, 256,3,conv7_bin,conv7_bias_bin,argv[0]);
+        Layer_t<float>  conv1(   3,  64,3,conv1_bin,conv1_bias_bin,vggData_path);
+        Layer_t<float>  conv2(  64,  64,3,conv2_bin,conv2_bias_bin,vggData_path);
+
+        Layer_t<float>  conv3(  64, 128,3,conv3_bin,conv3_bias_bin,vggData_path);
+        Layer_t<float>  conv4( 128, 128,3,conv4_bin,conv4_bias_bin,vggData_path);
         
-        Layer_t<float>  conv5( 128, 256,3,conv5_bin,conv5_bias_bin,argv[0]);
-        Layer_t<float>  conv6( 256, 256,3,conv6_bin,conv6_bias_bin,argv[0]);
-        Layer_t<float>  conv7( 256, 256,3,conv7_bin,conv7_bias_bin,argv[0]);
+        Layer_t<float>  conv5( 128, 256,3,conv5_bin,conv5_bias_bin,vggData_path);
+        Layer_t<float>  conv6( 256, 256,3,conv6_bin,conv6_bias_bin,vggData_path);
+        Layer_t<float>  conv7( 256, 256,3,conv7_bin,conv7_bias_bin,vggData_path);
 
-        Layer_t<float>  conv8( 256, 512,3,conv8_bin,conv8_bias_bin,argv[0]);
-        Layer_t<float>  conv9( 512, 512,3,conv9_bin,conv9_bias_bin,argv[0]);
-        Layer_t<float> conv10( 512, 512,3,conv10_bin,conv10_bias_bin,argv[0]);
+        Layer_t<float>  conv8( 256, 512,3,conv8_bin,conv8_bias_bin,vggData_path);
+        Layer_t<float>  conv9( 512, 512,3,conv9_bin,conv9_bias_bin,vggData_path);
+        Layer_t<float> conv10( 512, 512,3,conv10_bin,conv10_bias_bin,vggData_path);
 
-        Layer_t<float> conv11( 512, 512,3,conv11_bin,conv11_bias_bin,argv[0]);
-        Layer_t<float> conv12( 512, 512,3,conv12_bin,conv12_bias_bin,argv[0]);
-        Layer_t<float> conv13( 512, 512,3,conv13_bin,conv13_bias_bin,argv[0]);
+        Layer_t<float> conv11( 512, 512,3,conv11_bin,conv11_bias_bin,vggData_path);
+        Layer_t<float> conv12( 512, 512,3,conv12_bin,conv12_bias_bin,vggData_path);
+        Layer_t<float> conv13( 512, 512,3,conv13_bin,conv13_bias_bin,vggData_path);
 
-        Layer_t<float>   fc14(25088,4096,1,fc14_bin, fc14_bias_bin,argv[0]);
-        Layer_t<float>   fc15(4096,4096,1, fc15_bin, fc15_bias_bin,argv[0]);
-        Layer_t<float>   fc16(4096,1000,1, fc16_bin, fc16_bias_bin,argv[0]);
+        Layer_t<float>   fc14(25088,4096,1,fc14_bin, fc14_bias_bin,vggData_path);
+        Layer_t<float>   fc15(4096,4096,1, fc15_bin, fc15_bias_bin,vggData_path);
+        Layer_t<float>   fc16(4096,1000,1, fc16_bin, fc16_bias_bin,vggData_path);
 
         // The convolution algorithm TBD.
         // Set your conv algo.
@@ -153,6 +146,7 @@ int main(int argc, char *argv[])
         // stange things, why change the data format wont't impact the accuracy?
         vgg16.setTensorFormat(CUDNN_TENSOR_NCHW);
         // vgg16.setTensorFormat(CUDNN_TENSOR_NHWC);
+        // vgg16.setTensorFormat(CUDNN_TENSOR_CHWN); // not supported
 
         // float time[1000];
         int result[1000];
@@ -169,8 +163,13 @@ int main(int argc, char *argv[])
                 std::cout << "Performing forward propagation "<<  (100*i/(float)Round) <<"% ...\n";
             // Batched Conv testing
             // char file_name[30] = "./binImage/Batch2/bat2_";
-            char file_name[40]; 
-            sprintf(file_name, "./binImage/Batch%d/bat%d_%d.bin", n, n, i);
+            char file_name[100];
+
+            // FILE PATH 
+            // sprintf(file_name, "./binImage/Batch%d/bat%d_%d.bin", n, n, i);
+            // sprintf(file_name, "./binImage/Batch%d/bat%d_%d.bin", n, n, i);
+            sprintf(file_name, "/home/wangq/Preprocessing/DatasetPreprocessing/binImage/Batch%d_NHWC/bat%d_%d.bin", n, n, i);
+            // sprintf(file_name, "/home/wangq/Preprocessing/DatasetPreprocessing/binImage/Batch%d/bat%d_%d.bin", n, n, i);
 
             // char str2[5];
             // const char str3[] = ".bin";
@@ -183,7 +182,8 @@ int main(int argc, char *argv[])
             for(int j=0; j<n; j++) {
                 err += (ret[j] == (i*n+j) ? 1:0);
                 result[i*n + j] = ret[j];
-            }
+                printf("%d ",ret[j]);
+            }printf("\n");
             
             // multi-batch testing
             // const char image_name[] = "vggData/img0.bin";

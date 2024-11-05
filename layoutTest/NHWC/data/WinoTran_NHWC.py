@@ -199,7 +199,7 @@ def Wino_inverseTran(outputTran,chn, batch, blockn,oside):
     return finalOutput
 
 # Ground-Truth Naive Convolution of NCHW data layout
-def Conv_NHWC(sample_input, sample_kernel,padding):
+def Conv_NHWC(sample_input, sample_kernel, padding=1):
     assert(len(sample_input.shape)==4)
     assert(len(sample_kernel.shape)==4)
     assert(sample_input.shape[3]== sample_kernel.shape[3])
@@ -227,3 +227,16 @@ def Conv_NHWC(sample_input, sample_kernel,padding):
 #         print(round(progress,1),"% finished")          
         
     return c
+
+def ConvAdd_NHWC(sample_input, sample_kernel, bias):
+    assert(len(bias.shape)==1)
+    assert(bias.shape[0] == sample_kernel.shape[0])
+    
+    Conv_rst = Conv_NHWC(sample_input,sample_kernel, 1)
+    
+    ConvAdd_rst = np.zeros(Conv_rst.shape)
+    for chn in range(0, Conv_rst.shape[3]):
+        ConvAdd_rst[:,:,:,chn] = Conv_rst[:,:,:,chn] + bias[chn]
+    
+    return ConvAdd_rst
+    

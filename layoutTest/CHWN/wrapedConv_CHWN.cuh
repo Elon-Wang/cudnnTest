@@ -104,18 +104,18 @@ __global__ void wino_kernel_trans_chwn_suitFor128(int NSize, int KSize, float * 
     int tidx = threadIdx.x;  // numOfFilter
     int bid  = blockIdx.x;   // chn_in
 
-    // int chn_out = blockDim.x;
-    int numOfFilter = blockDim.x;
+    int chn_out = blockDim.x;
+    // int numOfFilter = blockDim.x;
 
 
     float Mread[3][3] ={{0}};
-    pInputs = &pInputs[tidx + bid *3*3*blockDim.x ];
+    pInputs = &pInputs[tidx + bid *3*3*chn_out ];
     pOutputs = &pOutputs[tidx + bid*NSize];
 
     #pragma unroll
     for (int i= 0; i<3; i++) {
         for (int j=0; j<3; j++) {
-            Mread[i][j] = pInputs[j*numOfFilter + i*3 *numOfFilter];
+            Mread[i][j] = pInputs[j*chn_out + i*3 *chn_out];
         }
     }
 

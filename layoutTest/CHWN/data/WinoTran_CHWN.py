@@ -226,3 +226,15 @@ def Conv_CHWN(sample_input, sample_kernel,padding):
 #         print(round(progress,1),"% finished")          
         
     return c
+
+def ConvAdd_CHWN(sample_input, sample_kernel, bias):
+    assert(len(bias.shape)==1)
+    assert(bias.shape[0] == sample_kernel.shape[3])
+    
+    Conv_rst = Conv_CHWN(sample_input,sample_kernel, 1)
+    
+    ConvAdd_rst = np.zeros(Conv_rst.shape)
+    for chn in range(0, Conv_rst.shape[0]):
+        ConvAdd_rst[chn,:,:,:] = Conv_rst[chn,:,:,:] + bias[chn]
+    
+    return ConvAdd_rst

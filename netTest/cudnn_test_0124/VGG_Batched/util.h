@@ -136,7 +136,7 @@ int lcm(int a, int b){
 
 void get_path(std::string& sFilename, const char *fname, const char *pname)
 {
-    sFilename = (std::string("vggData/") + std::string(fname));
+    sFilename = (std::string(pname) + std::string(fname));
 }
 
 // Need the map, since scaling factor is of float type in half precision
@@ -209,7 +209,11 @@ void readImage(const char* filename, value_type* imgData_h, int size) {
       exit(0);
     }
     FILE* ptr = fopen(filename, "rb");
-
+    
+    //MARKED modification
+    printf("ReadFile:%s\n",filename);
+    // End of the modification
+    
     if (!ptr) {
       printf("Bad file path: %p, %s\n", ptr, strerror(errno));
       exit(0);

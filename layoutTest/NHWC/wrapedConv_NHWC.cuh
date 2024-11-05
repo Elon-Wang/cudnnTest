@@ -131,17 +131,17 @@ __global__ void wino_kernel_trans_nhwc_suitFor128(int NSize, int KSize, float * 
     int tidx = threadIdx.x;  // chn_in
     int bid  = blockIdx.x;   // numOfFilter
 
-    int totalChn = blockDim.x;
+    int chn_in = blockDim.x;
 
 
     float Mread[3][3] ={{0}};
-    pInputs = &pInputs[tidx + bid *3*3*gridDim.x ];
+    pInputs = &pInputs[tidx + bid *3*3*chn_in ];
     pOutputs = &pOutputs[tidx + bid*KSize];
 
     #pragma unroll
     for (int i= 0; i<3; i++) {
         for (int j=0; j<3; j++) {
-            Mread[i][j] = pInputs[j * totalChn + i * 3 * totalChn];
+            Mread[i][j] = pInputs[j * chn_in + i * 3 * chn_in];
         }
     }
 

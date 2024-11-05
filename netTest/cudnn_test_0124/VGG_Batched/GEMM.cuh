@@ -1,3 +1,4 @@
+#pragma once
 #include "util.h"
 
 __global__ void GEMM_batch_256_128x128_MKNK(int m, int n, int chn, float alpha, float *m1, float *m2, float beta, float *output){

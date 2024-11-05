@@ -29,7 +29,8 @@ struct Layer_t
         }
         else
         {
-            weights_path = fname_weights; bias_path = fname_bias;
+            weights_path = std::string("vggData/") + fname_weights; 
+            bias_path = std::string("vggData/") + fname_bias;
         }
         readAllocInit(weights_path.c_str(), inputs * outputs * kernel_dim * kernel_dim, 
                         &data_h, &data_d);
@@ -71,7 +72,7 @@ void setTensorDesc(cudnnTensorDescriptor_t& tensorDesc,
                                             dataType,
                                             n, c,
                                             h,
-                                            w ) );value_type
+                                            w ) );
 #elif defined(ND_TENSOR_DESCRIPTOR)
     const int nDims = 4;
     int dimA[nDims] = {n,c,h,w};

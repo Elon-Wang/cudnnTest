@@ -195,11 +195,11 @@ __global__ void wino_kernel_trans_nchw_suitFor128(int NSize, int KSize, float * 
     int tidx = threadIdx.x;  // numOfFilter
     int bid  = blockIdx.x;   // chn_in
 
-    int chn_out = blockDim.x;
+    int chn_in = gridDim.x;
 
 
     float Mread[3][3] ={{0}};
-    pInputs = &pInputs[tidx*3*3*gridDim.x + bid *3*3];
+    pInputs = &pInputs[tidx*3*3*chn_in + bid *3*3];
     pOutputs = &pOutputs[tidx + bid*NSize];
 
     #pragma unroll

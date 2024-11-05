@@ -4,6 +4,7 @@
 #include "matrixOp.h"
 #include "wrapedConv_NCHW.cuh"
 // #include "wrapedConv_NHWC.cuh"
+// #include "wrapedConv_CHWN.cuh"
 
 template <class value_type>
 class network_t
@@ -22,7 +23,7 @@ class network_t
     cudnnLRNDescriptor_t   normDesc;
     cudnnDropoutDescriptor_t dropoutDesc;
     cublasHandle_t cublasHandle;
-    float *inputTran_gpu, *filterTran_gpu, *gemmOutput_gpu;
+    // float *inputTran_gpu, *filterTran_gpu, *gemmOutput_gpu;
 
     void createHandles()
     {
@@ -157,6 +158,11 @@ class network_t
                                               CUDNN_TENSOR_NCHW,
                                               tensorDims,
                                               filterDimA) );
+        // checkCUDNN( cudnnSetFilter4dDescriptor(filterDesc,
+        //                                       dataType,
+        //                                       tensorFormat,
+        //                                       conv.outputs, conv.inputs, 
+        //                                 conv.kernel_dim, conv.kernel_dim) );
  
         const int convDims = 2;
         int padA[convDims] = {1,1};
@@ -410,16 +416,19 @@ class network_t
             // cudaEventCreate(&ts3);
 
             // cudaEventRecord(ts1, NULL);
-            wrapedConv_NCHW(n, h, c, conv.outputs, 1, srcData, conv.data_d, inputTran_gpu, filterTran_gpu, gemmOutput_gpu , dstData);
+            // wrapedConv_NCHW(n, h, c, conv.outputs, 1, srcData, conv.data_d, inputTran_gpu, filterTran_gpu, gemmOutput_gpu , dstData);
             // wrapedConv_NCHW(n, h, c, conv.outputs, 1, srcData, conv.data_d, dstData);
+            wrapedConv_NHWC(n, h, c, conv.outputs, 1, srcData, conv.data_d, dstData);
+            // wrapedConv_CHWN(n, h, c, conv.outputs, 1, srcData, conv.data_d, dstData);
             // wrapedConv_NHWC(n, h, c, conv.outputs, 1, srcData, conv.data_d,  inputTran_gpu, filterTran_gpu, gemmOutput_gpu, dstData);
+            // wrapedConv_CHWN(n, h, c, conv.outputs, 1, srcData, conv.data_d, inputTran_gpu, filterTran_gpu, gemmOutput_gpu , dstData);
 
             cudaDeviceSynchronize();
             // cudaEventRecord(ts2, NULL);
             c = conv.outputs;
             setTensorDesc(dstTensorDesc, tensorFormat, dataType, n, c, h, w);
 
-            printf("addBias count\n");
+            // printf("addBias count\n");
             addBias(dstTensorDesc, conv, c, *dstData);
 
             // cudaEventRecord(ts3, NULL);
@@ -433,6 +442,11 @@ class network_t
             // printf("ts3:%lf ms\n", (timeCache));
         } else{
             convoluteForward(conv, n, c, h, w, srcData, dstData);
+            // cudaMemcpy(*dstData, srcData,
+            //                         h * w *sizeof(value_type) * n * conv.outputs,
+            //                         cudaMemcpyDeviceToDevice);
+            // c = conv.outputs;
+            // addBias(dstTensorDesc, conv, c, *dstData);
         }
     }
 
@@ -472,15 +486,12 @@ class network_t
         checkCudaErrors( cudaMalloc(&srcData, side * side * sizeof(value_type) * batch * 64) );
         checkCudaErrors( cudaMalloc(&dstData, side * side * sizeof(value_type) * batch * 64) );
         
-        int nInputTran = 36*3200*64 *batch;
-        int nFilterTran = 36*512*512 *batch;
-        int nGemmOutput = 36*3200*128 *batch;
-        cudaMalloc((void **) &inputTran_gpu,  nInputTran<<2);
-        cudaMalloc((void **) &filterTran_gpu, nFilterTran<<2);
-        cudaMalloc((void **) &gemmOutput_gpu, nGemmOutput<<2);
-        // checkCudaErrors( cudaMalloc(&inputTran_gpu, 36* 3200 * 64) );
-        // checkCudaErrors( cudaMalloc(&filterTran_gpu, 36* 512 * 512) );
-        // checkCudaErrors( cudaMalloc(&gemmOutput_gpu, 36* 3200 * 128) );
+        // long long nInputTran = 36*3200*64 *batch;
+        // long long nFilterTran = 36*512*512 *batch;
+        // long long nGemmOutput = 36*3200*128 *batch;
+        // cudaMalloc((void **) &inputTran_gpu,  nInputTran<<2);
+        // cudaMalloc((void **) &filterTran_gpu, nFilterTran<<2);
+        // cudaMalloc((void **) &gemmOutput_gpu, nGemmOutput<<2);
 
         checkCudaErrors( cudaMemcpy(srcData, imgData_h,
                                     side * side *sizeof(value_type) * batch * chn,
@@ -515,9 +526,34 @@ class network_t
 
         cudaEventRecord(start1, NULL);
 
+        // value_type * tmp1 = (value_type*)malloc( 5 * sizeof(value_type));
+        // cudaMemcpy(tmp1, srcData, 5*sizeof(value_type), cudaMemcpyDeviceToHost);
+        // checkCudaErrors (cudaDeviceSynchronize());
+        // printf("src: ");
+        // for (int i=0;i<5;i++){
+        //     printf("%lf  ", tmp1[i]);
+        // }printf("\n");
+
         convMethodChoose(conv1, n, c, h, w, srcData, &dstData, testChoice);
+
+        // end the loop for debug
+        // std::vector<int> ret1;
+        // return ret1;
+
+        // std::vector<int> ret1;
+        // return ret1;
+        // cudaMemcpy(tmp1, dstData, 5*sizeof(value_type), cudaMemcpyDeviceToHost);
+        // checkCudaErrors (cudaDeviceSynchronize());
+        // printf("conv1: ");
+        // for (int i=0;i<5;i++){
+        //     printf("%lf  ", tmp1[i]);
+        // }printf("\n");
+
         activationForward(n, c, h, w, dstData, &srcData);
-        convMethodChoose(conv2, n, c, h, w, srcData, &dstData, testChoice);      
+        convMethodChoose(conv2, n, c, h, w, srcData, &dstData, testChoice);
+
+
+
         activationForward(n, c, h, w, dstData, &srcData);
 		poolForward(n, c, h, w, srcData, &dstData);
         
@@ -535,10 +571,24 @@ class network_t
         activationForward(n, c, h, w, dstData, &srcData);
 		poolForward(n, c, h, w, srcData, &dstData);
 
+        // cudaMemcpy(tmp1, dstData, 5*sizeof(value_type), cudaMemcpyDeviceToHost);
+        // checkCudaErrors (cudaDeviceSynchronize());
+        // printf("pool3: ");
+        // for (int i=0;i<5;i++){
+        //     printf("%lf  ", tmp1[i]);
+        // }printf("\n");
+
         convMethodChoose(conv8, n, c, h, w, dstData, &srcData, testChoice);
         activationForward(n, c, h, w, srcData, &dstData);
+
+        // cudaMemcpy(tmp1, dstData, 5*sizeof(value_type), cudaMemcpyDeviceToHost);
+        // checkCudaErrors (cudaDeviceSynchronize());
+        // for (int i=0;i<5;i++){
+        //     printf("%lf  ", tmp1[i]);
+        // }printf("\n");
         convMethodChoose(conv9, n, c, h, w, dstData, &srcData, testChoice);
         activationForward(n, c, h, w, srcData, &dstData);
+
         convMethodChoose(conv10, n, c, h, w, dstData, &srcData, testChoice);
         activationForward(n, c, h, w, srcData, &dstData);
 		poolForward(n, c, h, w, dstData, &srcData);
@@ -602,16 +652,17 @@ class network_t
         cudaEventElapsedTime(&avetime, start1, stop1);
         cudaEventDestroy(start1);
         cudaEventDestroy(stop1);
-        printf("time:%lf ms\n", (avetime/n));
+        printf("time:%lf ms\n", (avetime));
+        // printf("time:%lf ms\n", (avetime/n));
 
         bool debug = false;
         if (debug){
             printDeviceVector(n, c*h*w, dstData);
         }
 
-        checkCudaErrors( cudaFree(inputTran_gpu));
-        checkCudaErrors( cudaFree(filterTran_gpu));
-        checkCudaErrors( cudaFree(gemmOutput_gpu));
+        // checkCudaErrors( cudaFree(inputTran_gpu));
+        // checkCudaErrors( cudaFree(filterTran_gpu));
+        // checkCudaErrors( cudaFree(gemmOutput_gpu));
 
         checkCudaErrors( cudaFree(srcData) );
         checkCudaErrors( cudaFree(dstData) );
