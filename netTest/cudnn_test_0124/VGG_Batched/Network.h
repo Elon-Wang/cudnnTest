@@ -2,9 +2,11 @@
 #include <bits/stdc++.h>
 #include "Layer.h"
 #include "matrixOp.h"
-#include "wrapedConv_NCHW.cuh"
+// #include "wrapedConv_NCHW.cuh"
 // #include "wrapedConv_NHWC.cuh"
-// #include "wrapedConv_CHWN.cuh"
+#include "wrapedConv_CHWN.cuh"
+#include "CHWN_support.cuh"
+#include "DataLayoutTrans.cuh"
 
 template <class value_type>
 class network_t
@@ -98,20 +100,27 @@ class network_t
     void setTensorFormat(const cudnnTensorFormat_t& format)
     {
         tensorFormat = format;
+        if (tensorFormat == -1){
+            printf("undefined Tensor Format\n");
+        }
     }
 
-    void addBias(const cudnnTensorDescriptor_t& dstTensorDesc, const Layer_t<value_type>& layer, int c, value_type *data)
+    void addBias(const cudnnTensorDescriptor_t& dstTensorDesc, const Layer_t<value_type>& layer, int n, int c, int h, int w, value_type *data)
     {
-        setTensorDesc(biasTensorDesc, tensorFormat, dataType, 1, c, 1, 1);
-
-        scaling_type alpha = scaling_type(1);
-        scaling_type beta  = scaling_type(1);
-        checkCUDNN( cudnnAddTensor( cudnnHandle, 
-                                    &alpha, biasTensorDesc,
-                                    layer.bias_d,
-                                    &beta,
-                                    dstTensorDesc,
-                                    data) );
+        // printf("addBias Cnt, tensorFormat:%d\n",tensorFormat);
+        if (tensorFormat == -1){
+            addBias_CHWN(data, layer.bias_d, c, h, w, n);
+        } else {
+            setTensorDesc(biasTensorDesc, tensorFormat, dataType, 1, c, 1, 1);
+            scaling_type alpha = scaling_type(1);
+            scaling_type beta  = scaling_type(1);
+            checkCUDNN( cudnnAddTensor( cudnnHandle, 
+                                        &alpha, biasTensorDesc,
+                                        layer.bias_d,
+                                        &beta,
+                                        dstTensorDesc,
+                                        data) );
+        }
     }
 
     void fullyConnectedForward(const Layer_t<value_type>& ip,
@@ -276,7 +285,7 @@ class network_t
                                               &beta,
                                               dstTensorDesc,
                                               *dstData) );
-        addBias(dstTensorDesc, conv, c, *dstData);
+        addBias(dstTensorDesc, conv, n, c, h, w, *dstData);
         if (sizeInBytes!=0)
         {
           checkCudaErrors( cudaFree(workSpace) );
@@ -286,42 +295,55 @@ class network_t
     void poolForward( int& n, int& c, int& h, int& w,
                       value_type* srcData, value_type** dstData)
     {
-        const int poolDims = 2;
-        int windowDimA[poolDims] = {2,2};
-        int paddingA[poolDims] = {0,0};
-        int strideA[poolDims] = {2,2};
-        checkCUDNN( cudnnSetPoolingNdDescriptor(poolingDesc,
-                                                CUDNN_POOLING_MAX,
-                                                CUDNN_PROPAGATE_NAN,
-                                                poolDims,
-                                                windowDimA,
-                                                paddingA,
-                                                strideA ) );
+        if (tensorFormat == -1) {
+            // 计算输出大小
+            int H_out = (h - 2) / 2 + 1;  // 2x2池化，步长2
+            int W_out = (w - 2) / 2 + 1;
+            
+            // 调用CHWN格式的池化函数
+            maxPool_CHWN(*dstData, srcData, c, h, w, n);
+            
+            // 更新输出维度
+            h = H_out;
+            w = W_out;
+        } else {
+            const int poolDims = 2;
+            int windowDimA[poolDims] = {2,2};
+            int paddingA[poolDims] = {0,0};
+            int strideA[poolDims] = {2,2};
+            checkCUDNN( cudnnSetPoolingNdDescriptor(poolingDesc,
+                                                    CUDNN_POOLING_MAX,
+                                                    CUDNN_PROPAGATE_NAN,
+                                                    poolDims,
+                                                    windowDimA,
+                                                    paddingA,
+                                                    strideA ) );
 
-        setTensorDesc(srcTensorDesc, tensorFormat, dataType, n, c, h, w);        
+            setTensorDesc(srcTensorDesc, tensorFormat, dataType, n, c, h, w);        
 
-        const int tensorDims = 4;
-        int tensorOuputDimA[tensorDims] = {n,c,h,w};
-        checkCUDNN( cudnnGetPoolingNdForwardOutputDim(poolingDesc,
-                                                    srcTensorDesc,
-                                                    tensorDims,
-                                                    tensorOuputDimA) );
-        n = tensorOuputDimA[0]; c = tensorOuputDimA[1];
-        h = tensorOuputDimA[2]; w = tensorOuputDimA[3];
+            const int tensorDims = 4;
+            int tensorOuputDimA[tensorDims] = {n,c,h,w};
+            checkCUDNN( cudnnGetPoolingNdForwardOutputDim(poolingDesc,
+                                                        srcTensorDesc,
+                                                        tensorDims,
+                                                        tensorOuputDimA) );
+            n = tensorOuputDimA[0]; c = tensorOuputDimA[1];
+            h = tensorOuputDimA[2]; w = tensorOuputDimA[3];
 
-        setTensorDesc(dstTensorDesc, tensorFormat, dataType, n, c, h, w);  
-     
-        // resize(n*c*h*w, dstData);
-        scaling_type alpha = scaling_type(1);
-        scaling_type beta = scaling_type(0);
-        checkCUDNN( cudnnPoolingForward(cudnnHandle,
-                                          poolingDesc,
-                                          &alpha,
-                                          srcTensorDesc,
-                                          srcData,
-                                          &beta,
-                                          dstTensorDesc,
-                                          *dstData) );
+            setTensorDesc(dstTensorDesc, tensorFormat, dataType, n, c, h, w);  
+        
+            // resize(n*c*h*w, dstData);
+            scaling_type alpha = scaling_type(1);
+            scaling_type beta = scaling_type(0);
+            checkCUDNN( cudnnPoolingForward(cudnnHandle,
+                                            poolingDesc,
+                                            &alpha,
+                                            srcTensorDesc,
+                                            srcData,
+                                            &beta,
+                                            dstTensorDesc,
+                                            *dstData) );
+        }
     }
 
     void softmaxForward(int n, int c, int h, int w, value_type* srcData, value_type** dstData)
@@ -375,26 +397,31 @@ class network_t
 
     void activationForward(int n, int c, int h, int w, value_type* srcData, value_type** dstData)
     {
-        checkCUDNN( cudnnSetActivationDescriptor(activDesc,
-                                                CUDNN_ACTIVATION_RELU,
-                                                CUDNN_PROPAGATE_NAN,
-                                                0.0) );
-    
-        // resize(n*c*h*w, dstData);
+        if (tensorFormat == -1) {
+            // 使用CHWN格式的ReLU函数
+            relu_CHWN(*dstData, srcData, c, h, w, n);
+        } else {
+            checkCUDNN( cudnnSetActivationDescriptor(activDesc,
+                                                    CUDNN_ACTIVATION_RELU,
+                                                    CUDNN_PROPAGATE_NAN,
+                                                    0.0) );
+        
+            // resize(n*c*h*w, dstData);
 
-        setTensorDesc(srcTensorDesc, tensorFormat, dataType, n, c, h, w);
-        setTensorDesc(dstTensorDesc, tensorFormat, dataType, n, c, h, w);
+            setTensorDesc(srcTensorDesc, tensorFormat, dataType, n, c, h, w);
+            setTensorDesc(dstTensorDesc, tensorFormat, dataType, n, c, h, w);
 
-        scaling_type alpha = scaling_type(1);
-        scaling_type beta  = scaling_type(0);
-        checkCUDNN( cudnnActivationForward(cudnnHandle,
-                                            activDesc,
-                                            &alpha,
-                                            srcTensorDesc,
-                                            srcData,
-                                            &beta,
-                                            dstTensorDesc,
-                                            *dstData) );    
+            scaling_type alpha = scaling_type(1);
+            scaling_type beta  = scaling_type(0);
+            checkCUDNN( cudnnActivationForward(cudnnHandle,
+                                                activDesc,
+                                                &alpha,
+                                                srcTensorDesc,
+                                                srcData,
+                                                &beta,
+                                                dstTensorDesc,
+                                                *dstData) );    
+        }
     }
 
     // void dropoutForward(int n, int c, int h, int w, value_type* srcData, value_type** dstData, const value_type p){
@@ -418,18 +445,20 @@ class network_t
             // cudaEventRecord(ts1, NULL);
             // wrapedConv_NCHW(n, h, c, conv.outputs, 1, srcData, conv.data_d, inputTran_gpu, filterTran_gpu, gemmOutput_gpu , dstData);
             // wrapedConv_NCHW(n, h, c, conv.outputs, 1, srcData, conv.data_d, dstData);
-            wrapedConv_NHWC(n, h, c, conv.outputs, 1, srcData, conv.data_d, dstData);
-            // wrapedConv_CHWN(n, h, c, conv.outputs, 1, srcData, conv.data_d, dstData);
+            // wrapedConv_NHWC(n, h, c, conv.outputs, 1, srcData, conv.data_d, dstData);
+            wrapedConv_CHWN(n, h, c, conv.outputs, 1, srcData, conv.data_d, dstData);
             // wrapedConv_NHWC(n, h, c, conv.outputs, 1, srcData, conv.data_d,  inputTran_gpu, filterTran_gpu, gemmOutput_gpu, dstData);
             // wrapedConv_CHWN(n, h, c, conv.outputs, 1, srcData, conv.data_d, inputTran_gpu, filterTran_gpu, gemmOutput_gpu , dstData);
 
             cudaDeviceSynchronize();
             // cudaEventRecord(ts2, NULL);
             c = conv.outputs;
-            setTensorDesc(dstTensorDesc, tensorFormat, dataType, n, c, h, w);
+            if (tensorFormat != -1){
+                setTensorDesc(dstTensorDesc, tensorFormat, dataType, n, c, h, w);
+            }
 
             // printf("addBias count\n");
-            addBias(dstTensorDesc, conv, c, *dstData);
+            addBias(dstTensorDesc, conv, n, c, h, w, *dstData);
 
             // cudaEventRecord(ts3, NULL);
             // cudaEventSynchronize(ts1);
@@ -442,6 +471,8 @@ class network_t
             // printf("ts3:%lf ms\n", (timeCache));
         } else{
             convoluteForward(conv, n, c, h, w, srcData, dstData);
+            
+            
             // cudaMemcpy(*dstData, srcData,
             //                         h * w *sizeof(value_type) * n * conv.outputs,
             //                         cudaMemcpyDeviceToDevice);
@@ -597,7 +628,19 @@ class network_t
         activationForward(n, c, h, w, dstData, &srcData);
         convMethodChoose(conv12, n, c, h, w, srcData, &dstData, testChoice);
         activationForward(n, c, h, w, dstData, &srcData);
-        convMethodChoose(conv13, n, c, h, w, srcData, &dstData, testChoice);
+        if (tensorFormat == -1) {
+            convLayoutTrans(n,h,c,conv13.outputs,1,srcData,conv13.data_d,&dstData);
+            cudaDeviceSynchronize();
+            addBias(dstTensorDesc, conv13, n, c, h, w, dstData);
+            c = conv13.outputs;
+            setTensorFormat(CUDNN_TENSOR_NCHW);
+            setTensorDesc(dstTensorDesc, tensorFormat, dataType, n, c, h, w);
+            
+        }else {
+            convMethodChoose(conv13, n, c, h, w, srcData, &dstData, testChoice);
+        }
+        
+        
         activationForward(n, c, h, w, dstData, &srcData);
 		poolForward(n, c, h, w, srcData, &dstData);
 
@@ -605,6 +648,7 @@ class network_t
         activationForward(n, c, h, w, srcData, &dstData);
         fullyConnectedForward(fc15, n, c, h, w, dstData, &srcData);       
         activationForward(n, c, h, w, srcData, &dstData);
+
         fullyConnectedForward(fc16, n, c, h, w, dstData, &srcData);
         softmaxForward(n, c, h, w, srcData, &dstData);
 
@@ -652,7 +696,7 @@ class network_t
         cudaEventElapsedTime(&avetime, start1, stop1);
         cudaEventDestroy(start1);
         cudaEventDestroy(stop1);
-        printf("time:%lf ms\n", (avetime));
+        printf("time: %lf ms\n", (avetime));
         // printf("time:%lf ms\n", (avetime/n));
 
         bool debug = false;

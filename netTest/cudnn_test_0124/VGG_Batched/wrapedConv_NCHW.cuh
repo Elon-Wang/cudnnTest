@@ -1,3 +1,4 @@
+#pragma once
 #include "GEMM.cuh"
 
 #ifndef WARMUP

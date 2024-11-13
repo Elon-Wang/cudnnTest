@@ -42,8 +42,10 @@ const char *fc15_bin = "fc15.bin";
 const char *fc15_bias_bin = "fc15.bias.bin";
 const char *fc16_bin = "fc16.bin";
 const char *fc16_bias_bin = "fc16.bias.bin";
-const char *vggData_path = "/home/wangq/Preprocessing/ModelPreprocessing/vggData_NHWC/";
 // const char *vggData_path = "/home/wangq/Preprocessing/ModelPreprocessing/vggData/";
+// const char *vggData_path = "/home/wangq/Preprocessing/ModelPreprocessing/vggData_NHWC/";
+// const char *vggData_path = "/home/wangq/Preprocessing/ModelPreprocessing/vggData_NHWC_CUDNN/";
+const char *vggData_path = "/home/wangq/Preprocessing/ModelPreprocessing/vggData_CHWN2/";
 // const char *vggData_path = "./vggData/";
 
 static char * baseFile(char *fname) 
@@ -87,7 +89,7 @@ int main(int argc, char *argv[])
     int version = (int)cudnnGetVersion();
     printf("cudnnGetVersion() : %d , CUDNN_VERSION from cudnn.h : %d (%s)\n", version, CUDNN_VERSION, CUDNN_VERSION_STR);
     printf("Host compiler version : %s %s\n", COMPILER_NAME, COMPILER_VER);
-    showDevices();
+    // showDevices();
 
     int device = 1;
     if (checkCmdLineFlag(argc, (const char **)argv, "device"))
@@ -144,9 +146,10 @@ int main(int argc, char *argv[])
         // vgg16.setConvolutionAlgorithm(CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD);
         
         // stange things, why change the data format wont't impact the accuracy?
-        vgg16.setTensorFormat(CUDNN_TENSOR_NCHW);
+        // vgg16.setTensorFormat(CUDNN_TENSOR_NCHW);
         // vgg16.setTensorFormat(CUDNN_TENSOR_NHWC);
-        // vgg16.setTensorFormat(CUDNN_TENSOR_CHWN); // not supported
+        // CHWN format
+        vgg16.setTensorFormat((cudnnTensorFormat_t)-1); // not supported
 
         // float time[1000];
         int result[1000];
@@ -168,7 +171,8 @@ int main(int argc, char *argv[])
             // FILE PATH 
             // sprintf(file_name, "./binImage/Batch%d/bat%d_%d.bin", n, n, i);
             // sprintf(file_name, "./binImage/Batch%d/bat%d_%d.bin", n, n, i);
-            sprintf(file_name, "/home/wangq/Preprocessing/DatasetPreprocessing/binImage/Batch%d_NHWC/bat%d_%d.bin", n, n, i);
+            // sprintf(file_name, "/home/wangq/Preprocessing/DatasetPreprocessing/binImage/Batch%d_NHWC/bat%d_%d.bin", n, n, i);
+            sprintf(file_name, "/home/wangq/Preprocessing/DatasetPreprocessing/binImage/Batch%d_CHWN/bat%d_%d.bin", n, n, i);
             // sprintf(file_name, "/home/wangq/Preprocessing/DatasetPreprocessing/binImage/Batch%d/bat%d_%d.bin", n, n, i);
 
             // char str2[5];
