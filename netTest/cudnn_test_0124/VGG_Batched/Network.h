@@ -550,7 +550,6 @@ class network_t
         // }printf("\n");
 
         float avetime =0;
-        // cudaEvent_t start1,stop1,ts1,ts2,ts3,ts4,ts5,ts6;
         cudaEvent_t start1,stop1;
         cudaEventCreate(&start1);
         cudaEventCreate(&stop1);
@@ -564,9 +563,7 @@ class network_t
         // for (int i=0;i<5;i++){
         //     printf("%lf  ", tmp1[i]);
         // }printf("\n");
-
         convMethodChoose(conv1, n, c, h, w, srcData, &dstData, testChoice);
-
         // end the loop for debug
         // std::vector<int> ret1;
         // return ret1;
@@ -587,7 +584,7 @@ class network_t
 
         activationForward(n, c, h, w, dstData, &srcData);
 		poolForward(n, c, h, w, srcData, &dstData);
-        
+
         convMethodChoose(conv3, n, c, h, w, dstData, &srcData, testChoice);
         activationForward(n, c, h, w, srcData, &dstData);
         convMethodChoose(conv4, n, c, h, w, dstData, &srcData, testChoice);
@@ -611,7 +608,6 @@ class network_t
 
         convMethodChoose(conv8, n, c, h, w, dstData, &srcData, testChoice);
         activationForward(n, c, h, w, srcData, &dstData);
-
         // cudaMemcpy(tmp1, dstData, 5*sizeof(value_type), cudaMemcpyDeviceToHost);
         // checkCudaErrors (cudaDeviceSynchronize());
         // for (int i=0;i<5;i++){
@@ -619,7 +615,6 @@ class network_t
         // }printf("\n");
         convMethodChoose(conv9, n, c, h, w, dstData, &srcData, testChoice);
         activationForward(n, c, h, w, srcData, &dstData);
-
         convMethodChoose(conv10, n, c, h, w, dstData, &srcData, testChoice);
         activationForward(n, c, h, w, srcData, &dstData);
 		poolForward(n, c, h, w, dstData, &srcData);

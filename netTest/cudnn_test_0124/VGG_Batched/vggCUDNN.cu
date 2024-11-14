@@ -161,7 +161,7 @@ int main(int argc, char *argv[])
         bool customizedModuleChoice = true;
 
         for(int i=0; i< Round;i++) {
-            
+            vgg16.setTensorFormat((cudnnTensorFormat_t)-1); // not supported
             if (i %50 ==0)
                 std::cout << "Performing forward propagation "<<  (100*i/(float)Round) <<"% ...\n";
             // Batched Conv testing
