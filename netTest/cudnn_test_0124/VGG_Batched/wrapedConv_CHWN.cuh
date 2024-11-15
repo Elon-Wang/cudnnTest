@@ -219,6 +219,8 @@ void wrapedConv_CHWN(int bat4Conv, int inside, int& chn, int numOfFilter, int pa
     The block config should be (blockx, blocky, channel).
     The M-dim of the GEMM should be arranged as blockx * blocky * bat4Conv, bat4Conv is the last dimension.
 */
+// input: CHWN layout
+// output: KM matrix,  M=(blockn, blockn, batch)
 __global__ void wino_input_trans_chwn_suitFor128(int side, int side_beta, int MSize, int KSize, int padding, float * pInputs, float* pOutputs){
     int tidx = threadIdx.x; // batch
     int bidx = blockIdx.x;  // blockn.x
@@ -271,6 +273,8 @@ __global__ void wino_input_trans_chwn_suitFor128(int side, int side_beta, int MS
     } 
 }
 
+// input: CHWN layout
+// output: KN matrix
 __global__ void wino_kernel_trans_chwn_suitFor128(int NSize, int KSize, float * pInputs, float* pOutputs){
     int tidx = threadIdx.x;  // numOfFilter
     int bid  = blockIdx.x;   // chn_in
@@ -313,6 +317,8 @@ __global__ void wino_kernel_trans_chwn_suitFor128(int NSize, int KSize, float * 
     }
 }
 
+// input: MN matrix,  M=(blockn, blockn, batch)
+// output: CHWN layout
 __global__ void wino_invers_chwn_suitFor128(int oside, int MSize, int NSize, float* pInputs, float* pOutputs) {
     int chn = threadIdx.x;  // numOfFilter or chn_out
     int bidx = blockIdx.x; // bat4Conv 
@@ -367,7 +373,8 @@ __global__ void wino_invers_chwn_suitFor128(int oside, int MSize, int NSize, flo
     }
 }
 
-
+// input: NM matrix,  M=(blockn, blockn, batch)
+// output: CHWN layout
 __global__ void wino_invers_chwn_suitFor128_2(int oside, int MSize, int NSize, float* pInputs, float* pOutputs) {
     int tidx = threadIdx.x;  // bat4Conv
     int bidx = blockIdx.x; // numOfFilter or chn_out

@@ -261,7 +261,8 @@ void wrapedConv_NHWC(int bat4Conv, int inside, int& chn, int numOfFilter, int pa
     The block config should be (blockx, blocky, batch).
     The M-dim of the GEMM should be arranged as blockx * blocky * bat4Conv, bat4Conv is the last dimension.
 */
-// change to MKNK output
+// input: NHWC layout
+// output: MK matrix,  M=(blockn, blockn, batch)
 __global__ void wino_input_trans_nhwc_suitFor128(int side, int side_beta, int MSize, int KSize, int padding, float * pInputs, float* pOutputs){
     int tidx = threadIdx.x; // chn_in
     int bidx = blockIdx.x;  // blockn.x
@@ -327,7 +328,8 @@ __global__ void wino_input_trans_nhwc_suitFor128(int side, int side_beta, int MS
     } 
 }
 
-// change to MKNK output
+// input: NHWC layout
+// output: NK matrix
 __global__ void wino_kernel_trans_nhwc_suitFor128(int NSize, int KSize, float * pInputs, float* pOutputs){
     int tidx = threadIdx.x;  // chn_in
     int bid  = blockIdx.x;   // numOfFilter
@@ -369,6 +371,8 @@ __global__ void wino_kernel_trans_nhwc_suitFor128(int NSize, int KSize, float * 
     }
 }
 
+// input: MN matrix,  M=(blockn, blockn, batch)
+// output: NHWC output
 __global__ void wino_invers_nhwc_suitFor128(int oside, int MSize, int NSize, float* pInputs, float* pOutputs) {
     int chn = threadIdx.x; // numOfFilter or chn_out
     int bidx = blockIdx.x; // bat4Conv 

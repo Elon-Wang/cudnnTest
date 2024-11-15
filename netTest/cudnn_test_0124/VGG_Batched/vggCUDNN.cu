@@ -149,7 +149,7 @@ int main(int argc, char *argv[])
         // vgg16.setTensorFormat(CUDNN_TENSOR_NCHW);
         // vgg16.setTensorFormat(CUDNN_TENSOR_NHWC);
         // CHWN format
-        vgg16.setTensorFormat((cudnnTensorFormat_t)-1); // not supported
+        // vgg16.setTensorFormat((cudnnTensorFormat_t)-1);
 
         // float time[1000];
         int result[1000];
@@ -161,7 +161,7 @@ int main(int argc, char *argv[])
         bool customizedModuleChoice = true;
 
         for(int i=0; i< Round;i++) {
-            vgg16.setTensorFormat((cudnnTensorFormat_t)-1); // not supported
+            vgg16.setDataLayout(DataLayout::CHWN);
             if (i %50 ==0)
                 std::cout << "Performing forward propagation "<<  (100*i/(float)Round) <<"% ...\n";
             // Batched Conv testing

@@ -4,7 +4,7 @@
 #include "matrixOp.h"
 // #include "wrapedConv_NCHW.cuh"
 // #include "wrapedConv_NHWC.cuh"
-#include "wrapedConv_CHWN.cuh"
+// #include "wrapedConv_CHWN.cuh"
 #include "CHWN_support.cuh"
 #include "DataLayoutTrans.cuh"
 
@@ -25,6 +25,7 @@ class network_t
     cudnnLRNDescriptor_t   normDesc;
     cudnnDropoutDescriptor_t dropoutDesc;
     cublasHandle_t cublasHandle;
+    DataLayout modelLayout= DataLayout::NCHW;
     // float *inputTran_gpu, *filterTran_gpu, *gemmOutput_gpu;
 
     void createHandles()
@@ -95,6 +96,24 @@ class network_t
     void setConvolutionAlgorithm(const cudnnConvolutionFwdAlgo_t& algo)
     {
         convAlgorithm = (int) algo;
+    }
+
+    void setDataLayout(const DataLayout& layout){
+        modelLayout = layout;
+        switch (layout){
+            case DataLayout::NCHW:
+                setTensorFormat(CUDNN_TENSOR_NCHW);
+                break;
+            case DataLayout::NHWC:
+                setTensorFormat(CUDNN_TENSOR_NHWC);
+                break;
+            case DataLayout::CHWN:
+                setTensorFormat((cudnnTensorFormat_t)-1);
+                break;
+            default:
+                printf("unknow layout (to int):%d", (int)layout);
+                break;
+        }
     }
 
     void setTensorFormat(const cudnnTensorFormat_t& format)
@@ -435,7 +454,7 @@ class network_t
     // }
 
     void convMethodChoose(const Layer_t<value_type>& conv, int& n, int& c, int& h, int& w,
-                          value_type* srcData, value_type** dstData, bool choice){
+                          value_type* srcData, value_type** dstData, bool choice, DataLayout srcLayout, DataLayout dstLaytout){
         if (choice) {
             // cudaEvent_t ts1, ts2, ts3;
             // cudaEventCreate(&ts1);
@@ -446,13 +465,31 @@ class network_t
             // wrapedConv_NCHW(n, h, c, conv.outputs, 1, srcData, conv.data_d, inputTran_gpu, filterTran_gpu, gemmOutput_gpu , dstData);
             // wrapedConv_NCHW(n, h, c, conv.outputs, 1, srcData, conv.data_d, dstData);
             // wrapedConv_NHWC(n, h, c, conv.outputs, 1, srcData, conv.data_d, dstData);
-            wrapedConv_CHWN(n, h, c, conv.outputs, 1, srcData, conv.data_d, dstData);
+            // wrapedConv_CHWN(n, h, c, conv.outputs, 1, srcData, conv.data_d, dstData);
             // wrapedConv_NHWC(n, h, c, conv.outputs, 1, srcData, conv.data_d,  inputTran_gpu, filterTran_gpu, gemmOutput_gpu, dstData);
             // wrapedConv_CHWN(n, h, c, conv.outputs, 1, srcData, conv.data_d, inputTran_gpu, filterTran_gpu, gemmOutput_gpu , dstData);
 
+            layoutManager(srcLayout, dstLaytout, n, h, c, conv.outputs, 1, srcData, conv.data_d, dstData);
             cudaDeviceSynchronize();
             // cudaEventRecord(ts2, NULL);
             c = conv.outputs;
+            if(srcLayout != dstLaytout){
+                switch (dstLaytout)
+                {
+                case DataLayout::NCHW:
+                    setTensorFormat(CUDNN_TENSOR_NCHW);
+                    break;
+                case DataLayout::NHWC:
+                    setTensorFormat(CUDNN_TENSOR_NHWC);
+                    break;
+                case DataLayout::CHWN:
+                    setTensorFormat((cudnnTensorFormat_t)-1);
+                    break;
+                default:
+                    printf("unknow layout:%d",dstLaytout);
+                    break;
+                }  
+            }
             if (tensorFormat != -1){
                 setTensorDesc(dstTensorDesc, tensorFormat, dataType, n, c, h, w);
             }
@@ -563,7 +600,7 @@ class network_t
         // for (int i=0;i<5;i++){
         //     printf("%lf  ", tmp1[i]);
         // }printf("\n");
-        convMethodChoose(conv1, n, c, h, w, srcData, &dstData, testChoice);
+        convMethodChoose(conv1, n, c, h, w, srcData, &dstData, testChoice, modelLayout, modelLayout);
         // end the loop for debug
         // std::vector<int> ret1;
         // return ret1;
@@ -578,24 +615,24 @@ class network_t
         // }printf("\n");
 
         activationForward(n, c, h, w, dstData, &srcData);
-        convMethodChoose(conv2, n, c, h, w, srcData, &dstData, testChoice);
+        convMethodChoose(conv2, n, c, h, w, srcData, &dstData, testChoice, modelLayout, modelLayout);
 
 
 
         activationForward(n, c, h, w, dstData, &srcData);
 		poolForward(n, c, h, w, srcData, &dstData);
 
-        convMethodChoose(conv3, n, c, h, w, dstData, &srcData, testChoice);
+        convMethodChoose(conv3, n, c, h, w, dstData, &srcData, testChoice, modelLayout, modelLayout);
         activationForward(n, c, h, w, srcData, &dstData);
-        convMethodChoose(conv4, n, c, h, w, dstData, &srcData, testChoice);
+        convMethodChoose(conv4, n, c, h, w, dstData, &srcData, testChoice, modelLayout, modelLayout);
         activationForward(n, c, h, w, srcData, &dstData);
 		poolForward(n, c, h, w, dstData, &srcData);
 
-        convMethodChoose(conv5, n, c, h, w, srcData, &dstData, testChoice);
+        convMethodChoose(conv5, n, c, h, w, srcData, &dstData, testChoice, modelLayout, modelLayout);
         activationForward(n, c, h, w, dstData, &srcData);
-        convMethodChoose(conv6, n, c, h, w, srcData, &dstData, testChoice);
+        convMethodChoose(conv6, n, c, h, w, srcData, &dstData, testChoice, modelLayout, modelLayout);
         activationForward(n, c, h, w, dstData, &srcData);
-        convMethodChoose(conv7, n, c, h, w, srcData, &dstData, testChoice);
+        convMethodChoose(conv7, n, c, h, w, srcData, &dstData, testChoice, modelLayout, modelLayout);
         activationForward(n, c, h, w, dstData, &srcData);
 		poolForward(n, c, h, w, srcData, &dstData);
 
@@ -606,34 +643,24 @@ class network_t
         //     printf("%lf  ", tmp1[i]);
         // }printf("\n");
 
-        convMethodChoose(conv8, n, c, h, w, dstData, &srcData, testChoice);
+        convMethodChoose(conv8, n, c, h, w, dstData, &srcData, testChoice, modelLayout, modelLayout);
         activationForward(n, c, h, w, srcData, &dstData);
         // cudaMemcpy(tmp1, dstData, 5*sizeof(value_type), cudaMemcpyDeviceToHost);
         // checkCudaErrors (cudaDeviceSynchronize());
         // for (int i=0;i<5;i++){
         //     printf("%lf  ", tmp1[i]);
         // }printf("\n");
-        convMethodChoose(conv9, n, c, h, w, dstData, &srcData, testChoice);
+        convMethodChoose(conv9, n, c, h, w, dstData, &srcData, testChoice, modelLayout, modelLayout);
         activationForward(n, c, h, w, srcData, &dstData);
-        convMethodChoose(conv10, n, c, h, w, dstData, &srcData, testChoice);
+        convMethodChoose(conv10, n, c, h, w, dstData, &srcData, testChoice, modelLayout, modelLayout);
         activationForward(n, c, h, w, srcData, &dstData);
 		poolForward(n, c, h, w, dstData, &srcData);
 
-        convMethodChoose(conv11, n, c, h, w, srcData, &dstData, testChoice);
+        convMethodChoose(conv11, n, c, h, w, srcData, &dstData, testChoice, modelLayout, modelLayout);
         activationForward(n, c, h, w, dstData, &srcData);
-        convMethodChoose(conv12, n, c, h, w, srcData, &dstData, testChoice);
+        convMethodChoose(conv12, n, c, h, w, srcData, &dstData, testChoice, modelLayout, modelLayout);
         activationForward(n, c, h, w, dstData, &srcData);
-        if (tensorFormat == -1) {
-            convLayoutTrans(n,h,c,conv13.outputs,1,srcData,conv13.data_d,&dstData);
-            cudaDeviceSynchronize();
-            addBias(dstTensorDesc, conv13, n, c, h, w, dstData);
-            c = conv13.outputs;
-            setTensorFormat(CUDNN_TENSOR_NCHW);
-            setTensorDesc(dstTensorDesc, tensorFormat, dataType, n, c, h, w);
-            
-        }else {
-            convMethodChoose(conv13, n, c, h, w, srcData, &dstData, testChoice);
-        }
+        convMethodChoose(conv13, n, c, h, w, srcData, &dstData, testChoice, modelLayout, DataLayout::NCHW);
         
         
         activationForward(n, c, h, w, dstData, &srcData);

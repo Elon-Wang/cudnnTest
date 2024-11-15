@@ -677,6 +677,9 @@ void wrapedConv_NCHW(int bat4Conv, int inside, int& chn, int numOfFilter, int pa
 // one thread corresponding to one tile
 // and one block corresponding to one tile of all batch.
 // Problem: the thread acess is not continuely, and will cause serious delay problem, makes the problem super slow.
+
+// input: NCHW layout
+// output: KM matrix,  M=(blockx, blocky, batch)
 __global__ void wino_input_trans_nchw_suitFor128(int side, int side_beta, int MSize, int KSize, int padding, float * pInputs, float* pOutputs, int bound){
     int tidx = threadIdx.x;     // batch
     int bidx = blockIdx.x;     //  chn_in
@@ -752,8 +755,8 @@ __global__ void wino_input_trans_nchw_suitFor128(int side, int side_beta, int MS
     }
 }
 
-// input: NCHW layout feature map.
-// output: KM layout GEMM output, M is conposed of (batch, blockn, blockn)
+// input: NCHW layout
+// output: KM matrix, M=(batch, blockn, blockn)
 __global__ void wino_input_trans_nchw_suitFor128_2(int side, int side_beta, int MSize, int KSize, int padding, float * pInputs, float* pOutputs, int bound, int tileArray, int numOfBlcokn){
     int tidx = threadIdx.x; // blocknx
     int tidy = threadIdx.y; // blockny
@@ -853,6 +856,8 @@ __global__ void wino_input_trans_nchw_suitFor128_2(int side, int side_beta, int 
 }
 
 
+// input: NCHW layout
+// output: KN matrix
 __global__ void wino_kernel_trans_nchw_suitFor128(int NSize, int KSize, float * pInputs, float* pOutputs){
     int tidx = threadIdx.x;  // numOfFilter
     int bid  = blockIdx.x;   // chn_in
@@ -895,7 +900,7 @@ __global__ void wino_kernel_trans_nchw_suitFor128(int NSize, int KSize, float * 
 }
 
 
-// input: MN layout GEMM output, M is conposed of (blockn, blockn, batch)
+// input: MN matrix, M=(blockn, blockn, batch)
 // output NCHW layout.
 __global__ void wino_invers_nchw_suitFor128(int oside, int MSize, int NSize, float* pInputs, float* pOutputs) {
     int chn = threadIdx.x;  // numOfFilter or chn_out
@@ -952,7 +957,7 @@ __global__ void wino_invers_nchw_suitFor128(int oside, int MSize, int NSize, flo
 }
 
 
-// input: MN layout GEMM output, M is conposed of (batch, blockn, blockn)
+// input: MN matrix, M=(batch, blockn, blockn)
 // output NCHW layout.
 __global__ void wino_invers_nchw_suitFor128_2(int oside, int MSize, int NSize, float* pInputs, float* pOutputs) {
     int chn = threadIdx.x;  // numOfFilter or chn_out
@@ -1024,7 +1029,7 @@ __global__ void wino_invers_nchw_suitFor128_2(int oside, int MSize, int NSize, f
 }
 
 
-// input: NM layout GEMM output, M is conposed of (batch, blockn, blockn)
+// input: NM matrix, M=(batch, blockn, blockn)
 // output NCHW layout.
 __global__ void wino_invers_nchw_suitFor128_3(int oside, int MSize, int NSize, float* pInputs, float* pOutputs, int tileArray, int numOfBlcokn){
     int tidx = threadIdx.x; // blockn.x
