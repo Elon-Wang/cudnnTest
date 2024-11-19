@@ -135,31 +135,31 @@ int main(int argc, char *argv[])
         // The network arichtecture TBD.
         network_t<float> vgg16;
 
-        Layer_t<float>  conv1(   3,  64,3, modelLayout, modelLayout, conv1_bin, conv1_bias_bin, vggData_path);
-        Layer_t<float>  conv2(  64,  64,3, modelLayout, modelLayout, conv2_bin, conv2_bias_bin, vggData_path);
+        Layer_t<float>  conv1(   3,  64,3, modelLayout, modelLayout, conv1_bin, conv1_bias_bin, vggData_path, vggData_path);
+        Layer_t<float>  conv2(  64,  64,3, modelLayout, modelLayout, conv2_bin, conv2_bias_bin, vggData_path, vggData_path);
 
-        Layer_t<float>  conv3(  64, 128,3, modelLayout, modelLayout, conv3_bin, conv3_bias_bin, vggData_path);
-        Layer_t<float>  conv4( 128, 128,3, modelLayout, modelLayout, conv4_bin, conv4_bias_bin, vggData_path);
+        Layer_t<float>  conv3( 64,  128,3, modelLayout, modelLayout, conv3_bin, conv3_bias_bin, vggData_path, vggData_path);
+        Layer_t<float>  conv4( 128, 128,3, modelLayout, modelLayout, conv4_bin, conv4_bias_bin, vggData_path, vggData_path);
         
-        Layer_t<float>  conv5( 128, 256,3, modelLayout, modelLayout, conv5_bin, conv5_bias_bin, vggData_path);
-        Layer_t<float>  conv6( 256, 256,3, modelLayout, modelLayout, conv6_bin, conv6_bias_bin, vggData_path);
-        Layer_t<float>  conv7( 256, 256,3, modelLayout, modelLayout, conv7_bin, conv7_bias_bin, vggData_path);
+        Layer_t<float>  conv5( 128, 256,3, modelLayout, modelLayout, conv5_bin, conv5_bias_bin, vggData_path, vggData_path);
+        Layer_t<float>  conv6( 256, 256,3, modelLayout, modelLayout, conv6_bin, conv6_bias_bin, vggData_path, vggData_path);
+        Layer_t<float>  conv7( 256, 256,3, modelLayout, modelLayout, conv7_bin, conv7_bias_bin, vggData_path, vggData_path);
 
-        Layer_t<float>  conv8( 256, 512,3, modelLayout, modelLayout, conv8_bin, conv8_bias_bin, vggData_path);
-        Layer_t<float>  conv9( 512, 512,3, modelLayout, modelLayout, conv9_bin, conv9_bias_bin, vggData_path);
-        Layer_t<float> conv10( 512, 512,3, modelLayout, modelLayout, conv10_bin, conv10_bias_bin, vggData_path);
+        Layer_t<float>  conv8( 256, 512,3, modelLayout, modelLayout, conv8_bin, conv8_bias_bin, vggData_path, vggData_path);
+        Layer_t<float>  conv9( 512, 512,3, modelLayout, modelLayout, conv9_bin, conv9_bias_bin, vggData_path, vggData_path);
+        Layer_t<float> conv10( 512, 512,3, modelLayout, modelLayout, conv10_bin, conv10_bias_bin, vggData_path, vggData_path);
 
-        Layer_t<float> conv11( 512, 512,3, modelLayout, modelLayout, conv11_bin, conv11_bias_bin, vggData_path);
-        Layer_t<float> conv12( 512, 512,3, modelLayout, modelLayout, conv12_bin, conv12_bias_bin, vggData_path);
-        Layer_t<float> conv13( 512, 512,3, modelLayout, modelLayout, conv13_bin, conv13_bias_bin, vggData_path);
+        Layer_t<float> conv11( 512, 512,3, modelLayout, modelLayout, conv11_bin, conv11_bias_bin, vggData_path, vggData_path);
+        Layer_t<float> conv12( 512, 512,3, modelLayout, modelLayout, conv12_bin, conv12_bias_bin, vggData_path, vggData_path);
+        Layer_t<float> conv13( 512, 512,3, modelLayout, modelLayout, conv13_bin, conv13_bias_bin, vggData_path, vggData_path);
         if (mode == 2){
             conv13.layout_in = DataLayout::CHWN;
             conv13.layout_out = DataLayout::NCHW;
         }
 
-        Layer_t<float>   fc14(25088,4096,1, modelLayout, modelLayout, fc14_bin, fc14_bias_bin, vggData_path);
-        Layer_t<float>   fc15(4096,4096,1, modelLayout, modelLayout, fc15_bin, fc15_bias_bin, vggData_path);
-        Layer_t<float>   fc16(4096,1000,1, modelLayout, modelLayout, fc16_bin, fc16_bias_bin, vggData_path);
+        Layer_t<float>   fc14(25088,4096,1, modelLayout, modelLayout, fc14_bin, fc14_bias_bin, vggData_path, vggData_path);
+        Layer_t<float>   fc15(4096,4096,1, modelLayout, modelLayout, fc15_bin, fc15_bias_bin, vggData_path, vggData_path);
+        Layer_t<float>   fc16(4096,1000,1, modelLayout, modelLayout, fc16_bin, fc16_bias_bin, vggData_path, vggData_path);
 
         // The convolution algorithm TBD.
         // Set your conv algo.

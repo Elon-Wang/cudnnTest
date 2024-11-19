@@ -98,7 +98,6 @@ void convLayoutTrans_CHWN_to_NCHW(int bat4Conv, int inside, int& chn, int numOfF
     cudaFree(workSpace);
 }
 
-// TO BE VERIFIED
 void convLayoutTrans_CHWN_to_NHWC(int bat4Conv, int inside, int& chn, int numOfFilter, int padding, float *m1, float *m2, float ** output){
     int marginOfInputSide = (inside+2*padding-6)%4;
     bool sideCheck = ( marginOfInputSide == 0 )? true: false ;
@@ -386,9 +385,10 @@ void convLayoutTrans_NHWC_to_CHWN(int bat4Conv, int inside, int& chn, int numOfF
     // output: NK matrix
     wino_kernel_trans_nhwc_suitFor128<<< dim3(numOfFilter,1,1), dim3(chn,1,1)>>>(NSize, KSize, m2, filterTran_gpu);
 
-    // input: KNKM matrix,  M=(blockn, blockn, batch)
+    // input: MKNK matrix,  M=(blockn, blockn, batch)
     // output: NM matrix,  M=(blockn, blockn, batch)
-    GEMM_batch_256_128x128_KMKN<<< dim3(blocky, blockx, bat4Gemm), dim3(256,1,1)>>>(NSize, MSize, KSize, 1, filterTran_gpu, inputTran_gpu, 0, gemmOutput_gpu);
+    // GEMM_batch_256_128x128_KMKN<<< dim3(blocky, blockx, bat4Gemm), dim3(256,1,1)>>>(NSize, MSize, KSize, 1, filterTran_gpu, inputTran_gpu, 0, gemmOutput_gpu);
+    GEMM_batch_256_128x128_MKNK<<<dim3(blocky, blockx, bat4Gemm), dim3(256,1,1)>>>(NSize, MSize, KSize, 1, filterTran_gpu,inputTran_gpu, 0, gemmOutput_gpu);
     // GEMM_batch_256_128x128_KMKN<<<dim3(blocky, blockx, bat4Gemm), dim3(256,1,1)>>> (NSize, MSize, KSize, 1, filterTran_gpu, inputTran_gpu, 0, gemmOutput_gpu);
     // cudaEventRecord(ts3, NULL);
 

@@ -20,22 +20,23 @@ struct Layer_t
     {}
 
     Layer_t(int _inputs, int _outputs, int _kernel_dim, DataLayout _layout_in, DataLayout _layout_out, const char* fname_weights,
-            const char* fname_bias, const char* pname = NULL)
+            const char* fname_bias, const char* pname1 = NULL, const char* pname2 = NULL)
                   : inputs(_inputs), outputs(_outputs), kernel_dim(_kernel_dim), layout_in(_layout_in), layout_out(_layout_out)
     {
         std::string weights_path, bias_path;
-        if (pname != NULL)
+        if (pname1 != NULL)
         {
-            get_path(weights_path, fname_weights, pname);
-            get_path(bias_path, fname_bias, pname);
-            // weights_path = std::string("vggData/") + std::string(fname_weights);
-            // bias_path = std::string("vggData/") + std::string(fname_bias);
-        }
-        else
-        {
+            get_path(weights_path, fname_weights, pname1);
+        } else {
             weights_path = std::string("vggData/") + fname_weights; 
+        }
+
+        if (pname2 != NULL){
+            get_path(bias_path, fname_bias, pname2);
+        } else{
             bias_path = std::string("vggData/") + fname_bias;
         }
+        
         // printf("weights_path: %s\n", weights_path.c_str());
         readAllocInit(weights_path.c_str(), inputs * outputs * kernel_dim * kernel_dim, 
                         &data_h, &data_d);
