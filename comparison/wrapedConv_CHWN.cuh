@@ -1,16 +1,18 @@
+#pragma once
 #include "GEMM.cuh"
 
 #ifndef WARMUP
 #define WARMUP
 __global__ void warmup(){}
 #endif
-void wrapedConv_CHWN(int bat4Conv, int inside, int& chn, int numOfFilter, int padding , float *m1, float *m2, float* inputTran_gpu, float* filterTran_gpu, float* gemmOutput_gpu, float **output);
-// void wrapedConv_NCHW(int bat4Conv, int inside, int& chn, int numOfFilter, int padding , float *m1, float *m2, float **output);
+// void wrapedConv_CHWN(int bat4Conv, int inside, int& chn, int numOfFilter, int padding , float *m1, float *m2, float* inputTran_gpu, float* filterTran_gpu, float* gemmOutput_gpu, float **output);
+void wrapedConv_CHWN(int bat4Conv, int inside, int& chn, int numOfFilter, int padding , float *m1, float *m2, float **output);
 __global__ void wino_input_trans_chwn_suitFor128(int side, int side_beta, int MSize, int KSize, int padding, float * pInputs, float* pOutputs );
 __global__ void wino_kernel_trans_chwn_suitFor128(int NSize, int KSize, float * pInputs, float* pOutputs);
 __global__ void wino_invers_chwn_suitFor128(int oside, int MSize, int NSize, float* pInputs, float* pOutputs);
 __global__ void wino_invers_chwn_suitFor128_2(int oside, int MSize, int NSize, float* pInputs, float* pOutputs);
 
+/*
 void wrapedConv_CHWN(int bat4Conv, int inside, int& chn, int numOfFilter, int padding, float *m1, float *m2, float* inputTran_gpu, float* filterTran_gpu, float* gemmOutput_gpu, float ** output){
     int marginOfInputSide = (inside+2*padding-6)%4;
     bool sideCheck = ( marginOfInputSide == 0 )? true: false ;
@@ -78,9 +80,35 @@ void wrapedConv_CHWN(int bat4Conv, int inside, int& chn, int numOfFilter, int pa
     // printf("time:%lf ms\t (%f, %f, %f, %f)\n", (total),(100*t0/total),(100*t1/total),(100*t2/total),(100*t3/total) );
 
 }
+*/
 
+/* // DEBUG Code
+__global__ void sumLayer(int bat4Conv,int chn, int inside, float *featureMap){
+    float sum=0;
+    for (int c=0;c<chn;c++){
+        for (int i=0;i<inside;i++){
+            for (int j=0;j<inside;j++){
+                sum += featureMap[c*inside*inside+i*inside+j];
+            }
+        }
+    }
+    printf("the sum of the feature map:%f\n",sum);
+}
 
-void wrapedConv_CHWN_2(int bat4Conv, int inside, int& chn, int numOfFilter, int padding, float *m1, float *m2, float ** output){
+__global__ void sumVar(int batch, int MN, int k, float *featureMap){
+    float sum=0;
+    for (int c=0;c<batch;c++){
+        for (int i=0;i<MN;i++){
+            for (int j=0;j<k;j++){
+                sum += featureMap[c*MN*k+i*k+j];
+            }
+        }
+    }
+    printf("the sum of the tem Vars:%f\n",sum);
+}
+*/
+
+void wrapedConv_CHWN(int bat4Conv, int inside, int& chn, int numOfFilter, int padding, float *m1, float *m2, float ** output){
     int marginOfInputSide = (inside+2*padding-6)%4;
     bool sideCheck = ( marginOfInputSide == 0 )? true: false ;
     int inside_beta = sideCheck? inside +2*padding : (inside + 2*padding + 4 - marginOfInputSide);
@@ -127,26 +155,47 @@ void wrapedConv_CHWN_2(int bat4Conv, int inside, int& chn, int numOfFilter, int 
 
     // cudaEventRecord(ts0, NULL);
 
+    // sumLayer<<<1,1>>>( bat4Conv, chn, inside, m1);
+    // sumLayer<<<1,1>>>( bat4Conv, chn, inside, *output);
+
     wino_input_trans_chwn_suitFor128<<< dim3(blockn, blockn, chn), dim3(bat4Conv,1,1)>>>(inside, inside_beta, MSize, KSize, padding, m1, inputTran_gpu );  
     // cudaEventRecord(ts1, NULL);
+
+    
 
     wino_kernel_trans_chwn_suitFor128<<< dim3(chn,1,1), dim3(numOfFilter,1,1)>>>(NSize, KSize, m2, filterTran_gpu);
     // cudaEventRecord(ts2, NULL);
 
+    // cudaDeviceSynchronize();
+    // sumVar<<<1,1>>>( 36, MSize, KSize, inputTran_gpu);
+    // sumVar<<<1,1>>>( 36, NSize, KSize, filterTran_gpu);
+
     // change the sequence of two matrix of input and kernel.
     // GEMM_batch_256_128x128_KMKN<<< dim3(blockx, blocky, bat4Gemm), dim3(256,1,1)>>>(MSize,NSize,KSize,1, inputTran_gpu, filterTran_gpu,0, gemmOutput_gpu);
-    GEMM_batch_256_128x128_KMKN<<< dim3(blockx, blocky, bat4Gemm), dim3(256,1,1)>>>(MSize,NSize,KSize,1, filterTran_gpu, inputTran_gpu,0, gemmOutput_gpu);
+    GEMM_batch_256_128x128_KMKN<<< dim3(blocky, blockx, bat4Gemm), dim3(256,1,1)>>>(NSize, MSize, KSize, 1, filterTran_gpu, inputTran_gpu, 0, gemmOutput_gpu);
+    // GEMM_batch_256_128x128_KMKN<<<dim3(blocky, blockx, bat4Gemm), dim3(256,1,1)>>> (NSize, MSize, KSize, 1, filterTran_gpu, inputTran_gpu, 0, gemmOutput_gpu);
     // cudaEventRecord(ts3, NULL);
+
+    // cudaDeviceSynchronize();
+    // sumVar<<<1,1>>>( 36, MSize, NSize, gemmOutput_gpu);
     
     wino_invers_chwn_suitFor128_2<<< dim3(numOfFilter,blockn,blockn), dim3(bat4Conv,1,1)>>>(oside, MSize, NSize, gemmOutput_gpu, *output);
     // wino_invers_chwn_suitFor128<<< dim3(bat4Conv,blockn,blockn), dim3(numOfFilter,1,1)>>>(oside, MSize, NSize, gemmOutput_gpu, *output);
     // cudaEventRecord(ts4, NULL);
+    
+    // cudaDeviceSynchronize();
+    // int nConvOutput = bat4Conv * oside * oside * numOfFilter;
+    // float *convOutput_gpu1 =(float *)malloc(nConvOutput * sizeof(float));
+    // cudaMemcpy(convOutput_gpu1, *output, nConvOutput<<2, cudaMemcpyDeviceToHost);
+    // int cnt4 = save_parameter("result/conv_CHWN.bin", nConvOutput, convOutput_gpu1);
+    // free(convOutput_gpu1);
 
     chn = numOfFilter;
 
     
 
     cudaDeviceSynchronize();
+
     // float t0, t1, t2, t3, total;
     // cudaEventElapsedTime(&t0, ts0, ts1);
     // cudaEventElapsedTime(&t1, ts1, ts2);
@@ -170,6 +219,8 @@ void wrapedConv_CHWN_2(int bat4Conv, int inside, int& chn, int numOfFilter, int 
     The block config should be (blockx, blocky, channel).
     The M-dim of the GEMM should be arranged as blockx * blocky * bat4Conv, bat4Conv is the last dimension.
 */
+// input: CHWN layout
+// output: KM matrix,  M=(blockn, blockn, batch)
 __global__ void wino_input_trans_chwn_suitFor128(int side, int side_beta, int MSize, int KSize, int padding, float * pInputs, float* pOutputs){
     int tidx = threadIdx.x; // batch
     int bidx = blockIdx.x;  // blockn.x
@@ -222,6 +273,8 @@ __global__ void wino_input_trans_chwn_suitFor128(int side, int side_beta, int MS
     } 
 }
 
+// input: CHWN layout
+// output: KN matrix
 __global__ void wino_kernel_trans_chwn_suitFor128(int NSize, int KSize, float * pInputs, float* pOutputs){
     int tidx = threadIdx.x;  // numOfFilter
     int bid  = blockIdx.x;   // chn_in
@@ -264,6 +317,8 @@ __global__ void wino_kernel_trans_chwn_suitFor128(int NSize, int KSize, float * 
     }
 }
 
+// input: MN matrix,  M=(blockn, blockn, batch)
+// output: CHWN layout
 __global__ void wino_invers_chwn_suitFor128(int oside, int MSize, int NSize, float* pInputs, float* pOutputs) {
     int chn = threadIdx.x;  // numOfFilter or chn_out
     int bidx = blockIdx.x; // bat4Conv 
@@ -318,7 +373,8 @@ __global__ void wino_invers_chwn_suitFor128(int oside, int MSize, int NSize, flo
     }
 }
 
-
+// input: NM matrix,  M=(blockn, blockn, batch)
+// output: CHWN layout
 __global__ void wino_invers_chwn_suitFor128_2(int oside, int MSize, int NSize, float* pInputs, float* pOutputs) {
     int tidx = threadIdx.x;  // bat4Conv
     int bidx = blockIdx.x; // numOfFilter or chn_out

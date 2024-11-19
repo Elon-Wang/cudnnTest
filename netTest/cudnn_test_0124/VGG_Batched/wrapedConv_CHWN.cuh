@@ -6,7 +6,7 @@
 __global__ void warmup(){}
 #endif
 // void wrapedConv_CHWN(int bat4Conv, int inside, int& chn, int numOfFilter, int padding , float *m1, float *m2, float* inputTran_gpu, float* filterTran_gpu, float* gemmOutput_gpu, float **output);
-void wrapedConv_NCHW(int bat4Conv, int inside, int& chn, int numOfFilter, int padding , float *m1, float *m2, float **output);
+void wrapedConv_CHWN(int bat4Conv, int inside, int& chn, int numOfFilter, int padding , float *m1, float *m2, float **output);
 __global__ void wino_input_trans_chwn_suitFor128(int side, int side_beta, int MSize, int KSize, int padding, float * pInputs, float* pOutputs );
 __global__ void wino_kernel_trans_chwn_suitFor128(int NSize, int KSize, float * pInputs, float* pOutputs);
 __global__ void wino_invers_chwn_suitFor128(int oside, int MSize, int NSize, float* pInputs, float* pOutputs);

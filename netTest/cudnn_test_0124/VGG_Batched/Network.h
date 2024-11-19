@@ -600,7 +600,7 @@ class network_t
         // for (int i=0;i<5;i++){
         //     printf("%lf  ", tmp1[i]);
         // }printf("\n");
-        convMethodChoose(conv1, n, c, h, w, srcData, &dstData, testChoice, modelLayout, modelLayout);
+        convMethodChoose(conv1, n, c, h, w, srcData, &dstData, testChoice, conv1.layout_in, conv1.layout_out);
         // end the loop for debug
         // std::vector<int> ret1;
         // return ret1;
@@ -615,24 +615,24 @@ class network_t
         // }printf("\n");
 
         activationForward(n, c, h, w, dstData, &srcData);
-        convMethodChoose(conv2, n, c, h, w, srcData, &dstData, testChoice, modelLayout, modelLayout);
+        convMethodChoose(conv2, n, c, h, w, srcData, &dstData, testChoice, conv2.layout_in, conv2.layout_out);
 
 
 
         activationForward(n, c, h, w, dstData, &srcData);
 		poolForward(n, c, h, w, srcData, &dstData);
 
-        convMethodChoose(conv3, n, c, h, w, dstData, &srcData, testChoice, modelLayout, modelLayout);
+        convMethodChoose(conv3, n, c, h, w, dstData, &srcData, testChoice, conv3.layout_in, conv3.layout_out);
         activationForward(n, c, h, w, srcData, &dstData);
-        convMethodChoose(conv4, n, c, h, w, dstData, &srcData, testChoice, modelLayout, modelLayout);
+        convMethodChoose(conv4, n, c, h, w, dstData, &srcData, testChoice, conv4.layout_in, conv4.layout_out);
         activationForward(n, c, h, w, srcData, &dstData);
 		poolForward(n, c, h, w, dstData, &srcData);
 
-        convMethodChoose(conv5, n, c, h, w, srcData, &dstData, testChoice, modelLayout, modelLayout);
+        convMethodChoose(conv5, n, c, h, w, srcData, &dstData, testChoice, conv5.layout_in, conv5.layout_out);
         activationForward(n, c, h, w, dstData, &srcData);
-        convMethodChoose(conv6, n, c, h, w, srcData, &dstData, testChoice, modelLayout, modelLayout);
+        convMethodChoose(conv6, n, c, h, w, srcData, &dstData, testChoice, conv6.layout_in, conv6.layout_out);
         activationForward(n, c, h, w, dstData, &srcData);
-        convMethodChoose(conv7, n, c, h, w, srcData, &dstData, testChoice, modelLayout, modelLayout);
+        convMethodChoose(conv7, n, c, h, w, srcData, &dstData, testChoice, conv7.layout_in, conv7.layout_out);
         activationForward(n, c, h, w, dstData, &srcData);
 		poolForward(n, c, h, w, srcData, &dstData);
 
@@ -643,24 +643,26 @@ class network_t
         //     printf("%lf  ", tmp1[i]);
         // }printf("\n");
 
-        convMethodChoose(conv8, n, c, h, w, dstData, &srcData, testChoice, modelLayout, modelLayout);
+        convMethodChoose(conv8, n, c, h, w, dstData, &srcData, testChoice, conv8.layout_in, conv8.layout_out);
         activationForward(n, c, h, w, srcData, &dstData);
         // cudaMemcpy(tmp1, dstData, 5*sizeof(value_type), cudaMemcpyDeviceToHost);
         // checkCudaErrors (cudaDeviceSynchronize());
         // for (int i=0;i<5;i++){
         //     printf("%lf  ", tmp1[i]);
         // }printf("\n");
-        convMethodChoose(conv9, n, c, h, w, dstData, &srcData, testChoice, modelLayout, modelLayout);
+        convMethodChoose(conv9, n, c, h, w, dstData, &srcData, testChoice, conv9.layout_in, conv9.layout_out);
         activationForward(n, c, h, w, srcData, &dstData);
-        convMethodChoose(conv10, n, c, h, w, dstData, &srcData, testChoice, modelLayout, modelLayout);
+        convMethodChoose(conv10, n, c, h, w, dstData, &srcData, testChoice, conv10.layout_in, conv10.layout_out);
         activationForward(n, c, h, w, srcData, &dstData);
 		poolForward(n, c, h, w, dstData, &srcData);
 
-        convMethodChoose(conv11, n, c, h, w, srcData, &dstData, testChoice, modelLayout, modelLayout);
+        convMethodChoose(conv11, n, c, h, w, srcData, &dstData, testChoice, conv11.layout_in, conv11.layout_out);
         activationForward(n, c, h, w, dstData, &srcData);
-        convMethodChoose(conv12, n, c, h, w, srcData, &dstData, testChoice, modelLayout, modelLayout);
+        convMethodChoose(conv12, n, c, h, w, srcData, &dstData, testChoice, conv12.layout_in, conv12.layout_out);
         activationForward(n, c, h, w, dstData, &srcData);
-        convMethodChoose(conv13, n, c, h, w, srcData, &dstData, testChoice, modelLayout, DataLayout::NCHW);
+        // Note, the program change the data layout to NCHW at conv13, so NHWC will get wrong result
+        // convMethodChoose(conv13, n, c, h, w, srcData, &dstData, testChoice, modelLayout, modelLayout);
+        convMethodChoose(conv13, n, c, h, w, srcData, &dstData, testChoice, conv13.layout_in, conv13.layout_out);
         
         
         activationForward(n, c, h, w, dstData, &srcData);

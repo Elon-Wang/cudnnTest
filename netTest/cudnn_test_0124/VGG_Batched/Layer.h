@@ -1,12 +1,14 @@
 #pragma once
 #include <bits/stdc++.h>
 #include "util.h"
+#include "DataLayoutTrans.cuh"
 
 template <class value_type>
 struct Layer_t
 {
-    int inputs;
-    int outputs;
+    int inputs;     // input channels
+    int outputs;    // output channels
+    DataLayout layout_in, layout_out;
 
     // linear dimension (i.e. size is kernel_dim * kernel_dim)
     int kernel_dim;
@@ -17,9 +19,9 @@ struct Layer_t
                 inputs(0), outputs(0), kernel_dim(0)
     {}
 
-    Layer_t(int _inputs, int _outputs, int _kernel_dim, const char* fname_weights,
+    Layer_t(int _inputs, int _outputs, int _kernel_dim, DataLayout _layout_in, DataLayout _layout_out, const char* fname_weights,
             const char* fname_bias, const char* pname = NULL)
-                  : inputs(_inputs), outputs(_outputs), kernel_dim(_kernel_dim)
+                  : inputs(_inputs), outputs(_outputs), kernel_dim(_kernel_dim), layout_in(_layout_in), layout_out(_layout_out)
     {
         std::string weights_path, bias_path;
         if (pname != NULL)
@@ -69,6 +71,10 @@ void setTensorDesc(cudnnTensorDescriptor_t& tensorDesc,
                     int h,
                     int w)
 {
+    if (tensorFormat == -1){
+        printf("undefined Tensor Format\n");
+        return;
+    }
 #if defined(SIMPLE_TENSOR_DESCRIPTOR)
     checkCUDNN( cudnnSetTensor4dDescriptor(tensorDesc,
                                             tensorFormat,

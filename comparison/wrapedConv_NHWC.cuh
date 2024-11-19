@@ -1,11 +1,12 @@
+#pragma once
 #include "GEMM.cuh"
 
 #ifndef WARMUP
 #define WARMUP
 __global__ void warmup(){}
 #endif
-void wrapedConv_NHWC(int bat4Conv, int inside, int& chn, int numOfFilter, int padding , float *m1, float *m2, float* inputTran_gpu, float* filterTran_gpu, float* gemmOutput_gpu, float **output);
-// void wrapedConv_NCHW(int bat4Conv, int inside, int& chn, int numOfFilter, int padding , float *m1, float *m2, float **output);
+// void wrapedConv_NHWC(int bat4Conv, int inside, int& chn, int numOfFilter, int padding , float *m1, float *m2, float* inputTran_gpu, float* filterTran_gpu, float* gemmOutput_gpu, float **output);
+void wrapedConv_NHWC(int bat4Conv, int inside, int& chn, int numOfFilter, int padding , float *m1, float *m2, float **output);
 __global__ void wino_input_trans_nhwc_suitFor128(int side, int side_beta, int MSize, int KSize, int padding, float * pInputs, float* pOutputs );
 __global__ void wino_kernel_trans_nhwc_suitFor128(int NSize, int KSize, float * pInputs, float* pOutputs);
 __global__ void wino_invers_nhwc_suitFor128(int oside, int MSize, int NSize, float* pInputs, float* pOutputs);
@@ -20,6 +21,7 @@ __global__ void wino_invers_nhwc_suitFor128(int oside, int MSize, int NSize, flo
 //     }                                                                    \
 // } while(0)
 
+/*
 void wrapedConv_NHWC(int bat4Conv, int inside, int& chn, int numOfFilter, int padding, float *m1, float *m2, float* inputTran_gpu, float* filterTran_gpu, float* gemmOutput_gpu, float ** output){
     // int nInput = 64*128*128;
     // float *output1 =(float *)malloc(nInput * sizeof(float));
@@ -109,8 +111,10 @@ void wrapedConv_NHWC(int bat4Conv, int inside, int& chn, int numOfFilter, int pa
     // printf("time:%lf ms\t (%f, %f, %f, %f)\n", (total),(100*t0/total),(100*t1/total),(100*t2/total),(100*t3/total) );
 
 }
+*/
 
-void wrapedConv_NHWC_2(int bat4Conv, int inside, int& chn, int numOfFilter, int padding, float *m1, float *m2, float ** output){
+
+void wrapedConv_NHWC(int bat4Conv, int inside, int& chn, int numOfFilter, int padding, float *m1, float *m2, float ** output){
     // int nInput = 64*128*128;
     // float *output1 =(float *)malloc(nInput * sizeof(float));
     // cudaMemcpy(output1, m1, nInput<<2, cudaMemcpyDeviceToHost);
@@ -153,7 +157,7 @@ void wrapedConv_NHWC_2(int bat4Conv, int inside, int& chn, int numOfFilter, int 
     // cudaDeviceSynchronize();
     // CHECK_CUDA(cudaMalloc((void **) &workSpace,  nWorkSpace<<2));
     cudaMalloc((void **) &workSpace,  nWorkSpace<<2);
-    printf("Size of WorkSpace:%d\n",nWorkSpace);
+    // printf("Size of WorkSpace:%d\n",nWorkSpace);
 
     inputTran_gpu = workSpace;
     filterTran_gpu = workSpace + nInputTran;
@@ -201,12 +205,21 @@ void wrapedConv_NHWC_2(int bat4Conv, int inside, int& chn, int numOfFilter, int 
     // GEMM_batch_256_128x128_MKNK<<<dim3(blockx, blocky, bat4Gemm), dim3(256,1,1)>>>(MSize, NSize, KSize, 1, inputTran_gpu, filterTran_gpu, 0, gemmOutput_gpu);
     // cudaEventRecord(ts3, NULL);
 
-    // int nGemmOutput = 36*MSize*NSize;
+    // int nGemmOutput = 36 * MSize*NSize;
     // float *output1 =(float *)malloc(nGemmOutput * sizeof(float));
     // cudaMemcpy(output1, gemmOutput_gpu, nGemmOutput<<2, cudaMemcpyDeviceToHost);
-    // printf("1st:%f\n",output1[0]);
+    // int cnt3 = save_parameter("result/gemm1.bin", nGemmOutput, output1);
+    // free(output1);
+
     wino_invers_nhwc_suitFor128<<< dim3(bat4Conv, blockn, blockn), dim3(numOfFilter,1,1)>>>(oside, MSize, NSize, gemmOutput_gpu, *output);
     // cudaEventRecord(ts4, NULL);
+
+    // int nConvOutput = bat4Conv * oside * oside * numOfFilter;
+    // float *convOutput_gpu1 =(float *)malloc(nConvOutput * sizeof(float));
+    // cudaMemcpy(convOutput_gpu1, *output, nConvOutput<<2, cudaMemcpyDeviceToHost);
+    // int cnt4 = save_parameter("result/conv_out1.bin", nConvOutput, convOutput_gpu1);
+    // free(convOutput_gpu1);
+
 
     chn = numOfFilter;
 
@@ -242,12 +255,14 @@ void wrapedConv_NHWC_2(int bat4Conv, int inside, int& chn, int numOfFilter, int 
 
 }
 
+
 /*
     In this design, one thread coresponding to a tile, and the threads inside a block corresponding to each channel of a batch
     The block config should be (blockx, blocky, batch).
     The M-dim of the GEMM should be arranged as blockx * blocky * bat4Conv, bat4Conv is the last dimension.
 */
-// change to MKNK output
+// input: NHWC layout
+// output: MK matrix,  M=(blockn, blockn, batch)
 __global__ void wino_input_trans_nhwc_suitFor128(int side, int side_beta, int MSize, int KSize, int padding, float * pInputs, float* pOutputs){
     int tidx = threadIdx.x; // chn_in
     int bidx = blockIdx.x;  // blockn.x
@@ -276,6 +291,18 @@ __global__ void wino_input_trans_nhwc_suitFor128(int side, int side_beta, int MS
             }
         }
     }
+    
+    // if(bidx ==0 && bidy==0 && bidz==0 && tidx==0) {
+    //     for (int i=0;i<6;i++){
+    //         for(int j=0;j<6;j++){
+    //             if( (4*bidx +j >= padding)&& (4*bidy +i >= padding)&& (4*bidx +j <= inside-1+padding)&& (4*bidy +i <= inside-1+padding)){
+    //                 printf("%f ", pInputs[j+i*inside]);
+    //             }else{
+    //                 printf("skip  ");
+    //             }
+    //         }printf("\n");
+    //     }
+    // }
 
     float Atd[6][6] = {{0}};
 
@@ -301,7 +328,8 @@ __global__ void wino_input_trans_nhwc_suitFor128(int side, int side_beta, int MS
     } 
 }
 
-// change to MKNK output
+// input: NHWC layout
+// output: NK matrix
 __global__ void wino_kernel_trans_nhwc_suitFor128(int NSize, int KSize, float * pInputs, float* pOutputs){
     int tidx = threadIdx.x;  // chn_in
     int bid  = blockIdx.x;   // numOfFilter
@@ -343,6 +371,8 @@ __global__ void wino_kernel_trans_nhwc_suitFor128(int NSize, int KSize, float * 
     }
 }
 
+// input: MN matrix,  M=(blockn, blockn, batch)
+// output: NHWC output
 __global__ void wino_invers_nhwc_suitFor128(int oside, int MSize, int NSize, float* pInputs, float* pOutputs) {
     int chn = threadIdx.x; // numOfFilter or chn_out
     int bidx = blockIdx.x; // bat4Conv 

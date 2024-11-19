@@ -42,10 +42,10 @@ const char *fc15_bin = "fc15.bin";
 const char *fc15_bias_bin = "fc15.bias.bin";
 const char *fc16_bin = "fc16.bin";
 const char *fc16_bias_bin = "fc16.bias.bin";
-// const char *vggData_path = "/home/wangq/Preprocessing/ModelPreprocessing/vggData/";
-// const char *vggData_path = "/home/wangq/Preprocessing/ModelPreprocessing/vggData_NHWC/";
-// const char *vggData_path = "/home/wangq/Preprocessing/ModelPreprocessing/vggData_NHWC_CUDNN/";
-const char *vggData_path = "/home/wangq/Preprocessing/ModelPreprocessing/vggData_CHWN2/";
+const char *vggData_path0 = "/home/wangq/Preprocessing/ModelPreprocessing/vggData/";
+const char *vggData_path1 = "/home/wangq/Preprocessing/ModelPreprocessing/vggData_NHWC/";
+const char *vggData_path3 = "/home/wangq/Preprocessing/ModelPreprocessing/vggData_NHWC_CUDNN/";
+const char *vggData_path2 = "/home/wangq/Preprocessing/ModelPreprocessing/vggData_CHWN2/";
 // const char *vggData_path = "./vggData/";
 
 static char * baseFile(char *fname) 
@@ -102,43 +102,64 @@ int main(int argc, char *argv[])
     if (checkCmdLineFlag(argc, (const char **)argv, "set"))
     {
         //char* image_name;
-        int n,c,side;
+        int n,c,side,mode;
         // getCmdLineArgumentString(argc, (const char **)argv,
         //                          "set", (char **) &image_name);
         n = getCmdLineArgumentInt(argc, (const char **)argv, "batch");
         // c = getCmdLineArgumentInt(argc, (const char **)argv, "chn");
         // side = getCmdLineArgumentInt(argc, (const char **)argv, "side");
-        
+        mode = getCmdLineArgumentInt(argc, (const char **)argv, "mode"); // 0: NCHW, 1: NHWC, 2: CHWN
+
         c =3; side =224;
         assert(side == IMAGE_H); 
-        
-        
+
+        bool customizedModuleChoice = true;
+        const char *vggData_path = NULL;
+
+        DataLayout modelLayout ;
+        if(mode ==0){
+            vggData_path = vggData_path0;
+            modelLayout = DataLayout::NCHW;
+        } else if (mode == 1){
+            if (customizedModuleChoice){
+                vggData_path = vggData_path1;
+            } else{
+                vggData_path = vggData_path3;
+            }   
+            modelLayout = DataLayout::NHWC;
+        } else if (mode == 2){
+            vggData_path = vggData_path2;
+            modelLayout = DataLayout::CHWN;
+        }
+
         // The network arichtecture TBD.
         network_t<float> vgg16;
 
+        Layer_t<float>  conv1(   3,  64,3, modelLayout, modelLayout, conv1_bin, conv1_bias_bin, vggData_path);
+        Layer_t<float>  conv2(  64,  64,3, modelLayout, modelLayout, conv2_bin, conv2_bias_bin, vggData_path);
 
-
-        Layer_t<float>  conv1(   3,  64,3,conv1_bin,conv1_bias_bin,vggData_path);
-        Layer_t<float>  conv2(  64,  64,3,conv2_bin,conv2_bias_bin,vggData_path);
-
-        Layer_t<float>  conv3(  64, 128,3,conv3_bin,conv3_bias_bin,vggData_path);
-        Layer_t<float>  conv4( 128, 128,3,conv4_bin,conv4_bias_bin,vggData_path);
+        Layer_t<float>  conv3(  64, 128,3, modelLayout, modelLayout, conv3_bin, conv3_bias_bin, vggData_path);
+        Layer_t<float>  conv4( 128, 128,3, modelLayout, modelLayout, conv4_bin, conv4_bias_bin, vggData_path);
         
-        Layer_t<float>  conv5( 128, 256,3,conv5_bin,conv5_bias_bin,vggData_path);
-        Layer_t<float>  conv6( 256, 256,3,conv6_bin,conv6_bias_bin,vggData_path);
-        Layer_t<float>  conv7( 256, 256,3,conv7_bin,conv7_bias_bin,vggData_path);
+        Layer_t<float>  conv5( 128, 256,3, modelLayout, modelLayout, conv5_bin, conv5_bias_bin, vggData_path);
+        Layer_t<float>  conv6( 256, 256,3, modelLayout, modelLayout, conv6_bin, conv6_bias_bin, vggData_path);
+        Layer_t<float>  conv7( 256, 256,3, modelLayout, modelLayout, conv7_bin, conv7_bias_bin, vggData_path);
 
-        Layer_t<float>  conv8( 256, 512,3,conv8_bin,conv8_bias_bin,vggData_path);
-        Layer_t<float>  conv9( 512, 512,3,conv9_bin,conv9_bias_bin,vggData_path);
-        Layer_t<float> conv10( 512, 512,3,conv10_bin,conv10_bias_bin,vggData_path);
+        Layer_t<float>  conv8( 256, 512,3, modelLayout, modelLayout, conv8_bin, conv8_bias_bin, vggData_path);
+        Layer_t<float>  conv9( 512, 512,3, modelLayout, modelLayout, conv9_bin, conv9_bias_bin, vggData_path);
+        Layer_t<float> conv10( 512, 512,3, modelLayout, modelLayout, conv10_bin, conv10_bias_bin, vggData_path);
 
-        Layer_t<float> conv11( 512, 512,3,conv11_bin,conv11_bias_bin,vggData_path);
-        Layer_t<float> conv12( 512, 512,3,conv12_bin,conv12_bias_bin,vggData_path);
-        Layer_t<float> conv13( 512, 512,3,conv13_bin,conv13_bias_bin,vggData_path);
+        Layer_t<float> conv11( 512, 512,3, modelLayout, modelLayout, conv11_bin, conv11_bias_bin, vggData_path);
+        Layer_t<float> conv12( 512, 512,3, modelLayout, modelLayout, conv12_bin, conv12_bias_bin, vggData_path);
+        Layer_t<float> conv13( 512, 512,3, modelLayout, modelLayout, conv13_bin, conv13_bias_bin, vggData_path);
+        if (mode == 2){
+            conv13.layout_in = DataLayout::CHWN;
+            conv13.layout_out = DataLayout::NCHW;
+        }
 
-        Layer_t<float>   fc14(25088,4096,1,fc14_bin, fc14_bias_bin,vggData_path);
-        Layer_t<float>   fc15(4096,4096,1, fc15_bin, fc15_bias_bin,vggData_path);
-        Layer_t<float>   fc16(4096,1000,1, fc16_bin, fc16_bias_bin,vggData_path);
+        Layer_t<float>   fc14(25088,4096,1, modelLayout, modelLayout, fc14_bin, fc14_bias_bin, vggData_path);
+        Layer_t<float>   fc15(4096,4096,1, modelLayout, modelLayout, fc15_bin, fc15_bias_bin, vggData_path);
+        Layer_t<float>   fc16(4096,1000,1, modelLayout, modelLayout, fc16_bin, fc16_bias_bin, vggData_path);
 
         // The convolution algorithm TBD.
         // Set your conv algo.
@@ -158,21 +179,41 @@ int main(int argc, char *argv[])
         int Round = 3;
         warmup<<<1,1>>>();
         // n =10;
-        bool customizedModuleChoice = true;
+        
 
         for(int i=0; i< Round;i++) {
-            vgg16.setDataLayout(DataLayout::CHWN);
             if (i %50 ==0)
                 std::cout << "Performing forward propagation "<<  (100*i/(float)Round) <<"% ...\n";
             // Batched Conv testing
             // char file_name[30] = "./binImage/Batch2/bat2_";
             char file_name[100];
 
+            if (mode == 0){
+                // NCHW
+                vgg16.setDataLayout(DataLayout::NCHW);
+                sprintf(file_name, "/home/wangq/Preprocessing/DatasetPreprocessing/binImage/Batch%d/bat%d_%d.bin", n, n, i);
+
+            } else if (mode == 1){
+                // NHWC
+                vgg16.setDataLayout(DataLayout::NHWC);
+                sprintf(file_name, "/home/wangq/Preprocessing/DatasetPreprocessing/binImage/Batch%d_NHWC/bat%d_%d.bin", n, n, i);
+
+            } else if (mode == 2 && customizedModuleChoice){
+                // CHWN
+                vgg16.setDataLayout(DataLayout::CHWN);
+                sprintf(file_name, "/home/wangq/Preprocessing/DatasetPreprocessing/binImage/Batch%d_CHWN/bat%d_%d.bin", n, n, i);
+            } else{
+                // Data layout not supported
+                std::cout << "Data layout not supported" << std::endl;
+                exit(-1);
+            }
+            // layout relevant
+
             // FILE PATH 
             // sprintf(file_name, "./binImage/Batch%d/bat%d_%d.bin", n, n, i);
             // sprintf(file_name, "./binImage/Batch%d/bat%d_%d.bin", n, n, i);
-            // sprintf(file_name, "/home/wangq/Preprocessing/DatasetPreprocessing/binImage/Batch%d_NHWC/bat%d_%d.bin", n, n, i);
-            sprintf(file_name, "/home/wangq/Preprocessing/DatasetPreprocessing/binImage/Batch%d_CHWN/bat%d_%d.bin", n, n, i);
+
+            
             // sprintf(file_name, "/home/wangq/Preprocessing/DatasetPreprocessing/binImage/Batch%d/bat%d_%d.bin", n, n, i);
 
             // char str2[5];

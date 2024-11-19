@@ -28,7 +28,7 @@ void addBias_CHWN(float* data, const float* bias, int C, int H, int W, int N) {
 }
 */
 
-
+/*
 //version 2
 __global__ void addBias_linear_kernel_optimized(
     float* data,       // 输入输出数据 [C,H,W,N]
@@ -72,6 +72,29 @@ __global__ void addBias_linear_kernel_optimized(
     int total_size = C * H * W * N;
     
     for(int idx = tid + C * H * W * aligned_N; idx < total_size; idx += stride) {
+        int n = idx % N;
+        int w = (idx / N) % W;
+        int h = (idx / (N * W)) % H;
+        int c = idx / (N * W * H);
+        
+        data[idx] += bias[c];
+    }
+}
+*/
+
+__global__ void addBias_linear_kernel_optimized(
+    float* data,      
+    const float* bias,
+    int C, int H, int W, int N
+) {
+    const int BLOCK_SIZE = 256;
+    int tid = blockIdx.x * BLOCK_SIZE + threadIdx.x;
+    int stride = gridDim.x * BLOCK_SIZE;
+    
+    int total_size = C * H * W * N;
+    
+    // 直接按元素处理，让硬件处理内存合并访问
+    for(int idx = tid; idx < total_size; idx += stride) {
         int n = idx % N;
         int w = (idx / N) % W;
         int h = (idx / (N * W)) % H;
