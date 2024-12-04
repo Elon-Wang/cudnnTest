@@ -198,7 +198,7 @@ inline int getCmdLineArgumentInt(const int argc, const char **argv, const char *
     }
     else
     {
-        printf("Not found int\n");
+        printf("%s not found int\n", string_ref);
         return 0;
     }
 }

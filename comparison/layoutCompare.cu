@@ -5,11 +5,16 @@
 #include "error_util.h"
 #include "util.h"
 
-#include "wrapedConv_NCHW.cuh"
-#include "wrapedConv_NHWC.cuh"
-#include "wrapedConv_CHWN.cuh"
+#include "DataLayoutTrans.cuh"
+// #include "wrapedConv_NCHW.cuh"
+// #include "wrapedConv_NHWC.cuh"
+// #include "wrapedConv_CHWN.cuh"
 #include "wrapedConv_CuDNN.cuh"
 
+cudnnHandle_t handle;
+cudnnTensorDescriptor_t xdesc, ydesc;
+cudnnFilterDescriptor_t wdesc;
+cudnnConvolutionDescriptor_t conv_desc;
 
 
 void readAllocInit(const char* fname, int size, float** data_h, float** data_d)
@@ -20,49 +25,111 @@ void readAllocInit(const char* fname, int size, float** data_h, float** data_d)
 void BatchTesting(int opt, int bat4Conv, int inside, int chn, int numOfFilter, int padding, const char* fileName,const char* inputName);
 
 int main(int argc, char *argv[]){
-    cudaSetDevice(1);
+    // cudaSetDevice(1);
     cudaDeviceReset();
     // config
     // char filtername[100];
 
-    // int h = 224; int c = 3; int numOfFilter = 64;
-    // char filtername[100] = "./vggData/conv1.bin";
+    int device =1;
+    cudaSetDevice(device);
+    int n = getCmdLineArgumentInt(argc, (const char **)argv, "batch");
+    int opt = getCmdLineArgumentInt(argc, (const char **)argv, "opt");
+    int layer = getCmdLineArgumentInt(argc, (const char **)argv, "layer"); // 1: layer1, 2: layer2, 3: layer3, 4: layer4, 5: layer5, 6: layer6-7, 7: layer8, 8: layer9-10, 9: layer11-13
+
+    int h, c, numOfFilter;
+    char filtername[100];
+    switch (layer)
+    {
+    case 1:
+        h = 224; c = 3; numOfFilter = 64;
+        sprintf(filtername, "./vggData/conv1.bin");
+        break;
+    case 2:
+        h = 224; c = 64; numOfFilter = 64;
+        sprintf(filtername, "./vggData/conv2.bin");
+        break;
+    case 3:
+        h = 112; c = 64; numOfFilter = 128;
+        sprintf(filtername, "./vggData/conv3.bin");
+        break;
+    case 4:
+        h = 112; c = 128; numOfFilter = 128;
+        sprintf(filtername, "./vggData/conv4.bin");
+        break;
+    case 5:
+        h = 56; c = 128; numOfFilter = 256;
+        sprintf(filtername, "./vggData/conv5.bin");
+        break;
+    case 6:
+        h = 56; c = 256; numOfFilter = 256;
+        sprintf(filtername, "./vggData/conv7.bin");
+        break;
+    case 7:
+        h = 28; c = 256; numOfFilter = 512;
+        sprintf(filtername, "./vggData/conv8.bin");
+        break;
+    case 8:
+        h = 28; c = 512; numOfFilter = 512;
+        sprintf(filtername, "./vggData/conv10.bin");
+        break;
+    case 9:
+        h = 14; c = 512; numOfFilter = 512;
+        sprintf(filtername, "./vggData/conv13.bin");
+        break;
+    default:
+        printf("The layer is not right\n");
+        break;
+    }
+
+    
+    // sprintf(filtername, "./vggData/conv%d.bin", layer);
     // int h = 224; int c = 64; int numOfFilter = 64;
-    // char filtername[100] = "./vggData/conv2.bin";
+    // char filtername2[100] = "./vggData/conv2.bin";
 
     // int h = 112; int c = 64; int numOfFilter = 128;
-    // char filtername[100] = "./vggData/conv3.bin";
+    // char filtername3[100] = "./vggData/conv3.bin";
     // int h = 112; int c = 128;int numOfFilter = 128;
-    // char filtername[100] = "./vggData/conv4.bin";
+    // char filtername4[100] = "./vggData/conv4.bin";
 
     // int h = 56; int c = 128; int numOfFilter = 256;
-    // char filtername[100] = "./vggData/conv5.bin";
+    // char filtername5[100] = "./vggData/conv5.bin";
     // int h = 56; int c = 256; int numOfFilter = 256;
-    // char filtername[100] = "./vggData/conv7.bin";
+    // char filtername6[100] = "./vggData/conv7.bin";
 
     // int h = 28; int c = 256; int numOfFilter = 512;
-    // char filtername[100] = "./vggData/conv8.bin";
+    // char filtername7[100] = "./vggData/conv8.bin";
     // int h = 28; int c = 512; int numOfFilter = 512;
     // char filtername[100] = "./vggData/conv10.bin";
 
-    int h = 14; int c = 512; int numOfFilter = 512;
-    char filtername[100] = "./vggData/conv13.bin";
-
-
-    int n = getCmdLineArgumentInt(argc, (const char **)argv, "batch");
-    int opt = getCmdLineArgumentInt(argc, (const char **)argv, "opt");
+    // int h = 14; int c = 512; int numOfFilter = 512;
+    // char filtername9[100] = "./vggData/conv13.bin";
+    cudnnStatus_t status;
+    status = cudnnCreate(&handle);
+    if (status != CUDNN_STATUS_SUCCESS) printf("failed1\n");
+    status = cudnnCreateTensorDescriptor(&xdesc);
+    if (status != CUDNN_STATUS_SUCCESS) printf("failed2\n");
+    status = cudnnCreateTensorDescriptor(&ydesc);
+    if (status != CUDNN_STATUS_SUCCESS) printf("failed4\n");
+    status = cudnnCreateFilterDescriptor(&wdesc);
+    if (status != CUDNN_STATUS_SUCCESS) printf("failed6\n");
+    status = cudnnCreateConvolutionDescriptor(&conv_desc);
+    if (status != CUDNN_STATUS_SUCCESS) printf("failed10\n");
 
     printf("opt:%d\n",opt);
 
     warmup<<<1,1>>>();
 
-    for (int i=0;i<10;i++){
+    for (int i=0;i<20;i++){
         char file_name[40];
         sprintf(file_name, "./binImage/file_%d.bin", i); //20 different file
 
         BatchTesting(opt, n, h, c, numOfFilter, 1, filtername, file_name);
     }
-
+    cudnnDestroy(handle);
+    cudnnDestroyTensorDescriptor(xdesc);
+    cudnnDestroyTensorDescriptor(ydesc);
+    cudnnDestroyFilterDescriptor(wdesc);
+    cudnnDestroyConvolutionDescriptor(conv_desc);
     return 0;
 }
 
@@ -76,12 +143,12 @@ void BatchTesting(int opt, int bat4Conv, int side, int chn, int numOfFilter, int
     float *filterData_d = NULL; 
 
     float *srcData = NULL, *dstData = NULL;
-    float *inputTran_gpu, *filterTran_gpu, *gemmOutput_gpu;
+    // float *inputTran_gpu, *filterTran_gpu, *gemmOutput_gpu;
     // float* imgData_h = (float*)malloc(side*side*bat4Conv *chn * sizeof(float));
 
     checkCudaErrors( cudaMalloc(&filterData_d, nFilter * sizeof(float)  ) );
 
-    checkCudaErrors( cudaMalloc(&srcData, 224 * 224 * sizeof(float) * bat4Conv * 64 ) );
+    checkCudaErrors( cudaMalloc(&srcData, side * side * sizeof(float) * bat4Conv * chn ) );
     checkCudaErrors( cudaMalloc(&dstData, side * side * sizeof(float) * bat4Conv * numOfFilter) );
     
     // checkCudaErrors( cudaMalloc(&dstData, 224 * 224 * sizeof(float) * bat4Conv * 64) );
@@ -102,25 +169,22 @@ void BatchTesting(int opt, int bat4Conv, int side, int chn, int numOfFilter, int
     cudaEventRecord(start1, NULL); 
 
     if(opt ==0) {
-        printf("Conv_NCHW_4\n");
-        wrapedConv_NCHW_4(bat4Conv, side, chn, numOfFilter, 1, srcData, filterData_d, &dstData);
+        printf("Conv_NCHW\n");
+        // wrapedConv_NCHW(bat4Conv, side, chn, numOfFilter, 1, srcData, filterData_d, &dstData);
+        layoutManager(DataLayout::NCHW, DataLayout::NCHW, bat4Conv, side, chn, numOfFilter, padding, srcData, filterData_d, &dstData);
     } else if (opt ==1) {
-        printf("Conv_NCHW is deprecated\n");
-        return;
+        printf("Conv_NHWC\n");
+        // wrapedConv_NHWC(bat4Conv, side, chn, numOfFilter, 1, srcData, filterData_d, &dstData);
+        layoutManager(DataLayout::NHWC, DataLayout::NHWC, bat4Conv, side, chn, numOfFilter, padding, srcData, filterData_d, &dstData);
         // wrapedConv_NCHW(bat4Conv, side, chn, numOfFilter, 1, srcData, filterData_d, inputTran_gpu, filterTran_gpu, gemmOutput_gpu , &dstData);
     } else if (opt ==2) {
-        printf("Conv_NCHW_3 is deprecated\n");
-        return;
-        // wrapedConv_NCHW_3(bat4Conv, side, chn, numOfFilter, 1, srcData, filterData_d, inputTran_gpu, filterTran_gpu, gemmOutput_gpu , &dstData);
-    } else if (opt ==3) {
-        printf("Conv_NHWC\n");
-        wrapedConv_NHWC_2(bat4Conv, side, chn, numOfFilter, 1, srcData, filterData_d, &dstData);
-    } else if (opt ==4) {
         printf("Conv_CHWN\n");
-        wrapedConv_CHWN_2(bat4Conv, side, chn, numOfFilter, 1, srcData, filterData_d, &dstData);
-    } else if (opt ==5) {
+        // wrapedConv_CHWN(bat4Conv, side, chn, numOfFilter, 1, srcData, filterData_d, &dstData);
+        layoutManager(DataLayout::CHWN, DataLayout::CHWN, bat4Conv, side, chn, numOfFilter, padding, srcData, filterData_d, &dstData);
+        // wrapedConv_NCHW_3(bat4Conv, side, chn, numOfFilter, 1, srcData, filterData_d, inputTran_gpu, filterTran_gpu, gemmOutput_gpu , &dstData);
+    } else if (opt ==3 || opt ==4 || opt ==5 || opt ==6) {
         printf("Conv_CuDNN\n");
-        wrapedConv_CuDNN(bat4Conv, side, chn, numOfFilter, padding, srcData, filterData_d, &dstData);
+        wrapedConv_CuDNN(bat4Conv, side, chn, numOfFilter, padding, srcData, filterData_d, &dstData, opt, handle, xdesc, ydesc, wdesc, conv_desc);
     } else{
         printf("The option is not right\n");
     }

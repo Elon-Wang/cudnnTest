@@ -113,26 +113,36 @@ int main(int argc, char *argv[])
         c =3; side =224;
         assert(side == IMAGE_H); 
 
-        bool customizedModuleChoice = true;
+        bool customizedModuleChoice;
         const char *vggData_path = NULL;
 
         DataLayout modelLayout ;
         if(mode ==0){
+            customizedModuleChoice = true;
             vggData_path = vggData_path0;
             modelLayout = DataLayout::NCHW;
         } else if (mode == 1){
-            if (customizedModuleChoice){
-                vggData_path = vggData_path1;
-            } else{
-                vggData_path = vggData_path3;
-            }   
+            customizedModuleChoice = true;
+            vggData_path = vggData_path1;
             modelLayout = DataLayout::NHWC;
         } else if (mode == 2){
+            customizedModuleChoice = true;
             vggData_path = vggData_path2;
             modelLayout = DataLayout::CHWN;
+        } else if(mode == 3){
+            customizedModuleChoice = false;
+            vggData_path = vggData_path0;
+            modelLayout = DataLayout::NCHW;
+        } else if(mode == 4){
+            customizedModuleChoice = false;
+            vggData_path = vggData_path3;
+            modelLayout = DataLayout::NHWC;
+        } else{
+            std::cout << "Data layout not supported" << std::endl;
+            exit(-1);
         }
 
-        // The network arichtecture TBD.
+        // The network arichtecture of VGG16.
         network_t<float> vgg16;
 
         Layer_t<float>  conv1(   3,  64,3, modelLayout, modelLayout, conv1_bin, conv1_bias_bin, vggData_path, vggData_path);
@@ -163,8 +173,8 @@ int main(int argc, char *argv[])
 
         // The convolution algorithm TBD.
         // Set your conv algo.
-        vgg16.setConvolutionAlgorithm(CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD_NONFUSED);
-        // vgg16.setConvolutionAlgorithm(CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD);
+        // vgg16.setConvolutionAlgorithm(CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD_NONFUSED);
+        vgg16.setConvolutionAlgorithm(CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD);
         
         // stange things, why change the data format wont't impact the accuracy?
         // vgg16.setTensorFormat(CUDNN_TENSOR_NCHW);
@@ -173,13 +183,14 @@ int main(int argc, char *argv[])
         // vgg16.setTensorFormat((cudnnTensorFormat_t)-1);
 
         // float time[1000];
-        int result[1000];
+        int result[10000];
         std::vector<int> ret;
         int err = 0;
-        int Round = 3;
+        int Round = 100;
         warmup<<<1,1>>>();
+        cudaDeviceSynchronize();
         // n =10;
-        
+
 
         for(int i=0; i< Round;i++) {
             if (i %50 ==0)
@@ -191,7 +202,7 @@ int main(int argc, char *argv[])
             if (mode == 0){
                 // NCHW
                 vgg16.setDataLayout(DataLayout::NCHW);
-                sprintf(file_name, "/home/wangq/Preprocessing/DatasetPreprocessing/binImage/Batch%d/bat%d_%d.bin", n, n, i);
+                sprintf(file_name, "/home/wangq/Preprocessing/DatasetPreprocessing/binImage/Batch%d/bat%d_%d.bin", n, n, i%10);
 
             } else if (mode == 1){
                 // NHWC
@@ -202,6 +213,14 @@ int main(int argc, char *argv[])
                 // CHWN
                 vgg16.setDataLayout(DataLayout::CHWN);
                 sprintf(file_name, "/home/wangq/Preprocessing/DatasetPreprocessing/binImage/Batch%d_CHWN/bat%d_%d.bin", n, n, i);
+            } else if (mode == 3){
+                // NCHW
+                vgg16.setDataLayout(DataLayout::NCHW);
+                sprintf(file_name, "/home/wangq/Preprocessing/DatasetPreprocessing/binImage/Batch%d/bat%d_%d.bin", n, n, i);
+            } else if (mode == 4){
+                // NHWC
+                vgg16.setDataLayout(DataLayout::NHWC);
+                sprintf(file_name, "/home/wangq/Preprocessing/DatasetPreprocessing/binImage/Batch%d_NHWC/bat%d_%d.bin", n, n, i);
             } else{
                 // Data layout not supported
                 std::cout << "Data layout not supported" << std::endl;

@@ -76,7 +76,7 @@ class network_t
         }
         // tensorFormat = CUDNN_TENSOR_NCHW;
         tensorFormat = CUDNN_TENSOR_NHWC;
-        createHandles();    
+        createHandles();
     };
 
     ~network_t()
@@ -590,7 +590,7 @@ class network_t
         cudaEvent_t start1,stop1;
         cudaEventCreate(&start1);
         cudaEventCreate(&stop1);
-
+        cudaFree(0);
         cudaEventRecord(start1, NULL);
 
         // value_type * tmp1 = (value_type*)malloc( 5 * sizeof(value_type));
@@ -732,6 +732,7 @@ class network_t
         // checkCudaErrors( cudaFree(filterTran_gpu));
         // checkCudaErrors( cudaFree(gemmOutput_gpu));
 
+        free(imgData_h);
         checkCudaErrors( cudaFree(srcData) );
         checkCudaErrors( cudaFree(dstData) );
         return ret;
