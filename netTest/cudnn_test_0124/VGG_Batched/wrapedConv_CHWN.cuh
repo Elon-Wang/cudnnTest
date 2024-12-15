@@ -5,14 +5,14 @@
 #define WARMUP
 __global__ void warmup(){}
 #endif
-// void wrapedConv_CHWN(int bat4Conv, int inside, int& chn, int numOfFilter, int padding , float *m1, float *m2, float* inputTran_gpu, float* filterTran_gpu, float* gemmOutput_gpu, float **output);
-void wrapedConv_CHWN(int bat4Conv, int inside, int& chn, int numOfFilter, int padding , float *m1, float *m2, float **output);
+void wrapedConv_CHWN(int bat4Conv, int inside, int& chn, int numOfFilter, int padding , float *m1, float *m2, float* inputTran_gpu, float* filterTran_gpu, float* gemmOutput_gpu, float **output);
+// void wrapedConv_CHWN(int bat4Conv, int inside, int& chn, int numOfFilter, int padding , float *m1, float *m2, float **output);
 __global__ void wino_input_trans_chwn_suitFor128(int side, int side_beta, int MSize, int KSize, int padding, float * pInputs, float* pOutputs );
 __global__ void wino_kernel_trans_chwn_suitFor128(int NSize, int KSize, float * pInputs, float* pOutputs);
 __global__ void wino_invers_chwn_suitFor128(int oside, int MSize, int NSize, float* pInputs, float* pOutputs);
 __global__ void wino_invers_chwn_suitFor128_2(int oside, int MSize, int NSize, float* pInputs, float* pOutputs);
 
-/*
+
 void wrapedConv_CHWN(int bat4Conv, int inside, int& chn, int numOfFilter, int padding, float *m1, float *m2, float* inputTran_gpu, float* filterTran_gpu, float* gemmOutput_gpu, float ** output){
     int marginOfInputSide = (inside+2*padding-6)%4;
     bool sideCheck = ( marginOfInputSide == 0 )? true: false ;
@@ -55,7 +55,7 @@ void wrapedConv_CHWN(int bat4Conv, int inside, int& chn, int numOfFilter, int pa
 
     // change the sequence of two matrix of input and kernel.
     // GEMM_batch_256_128x128_KMKN<<< dim3(blockx, blocky, bat4Gemm), dim3(256,1,1)>>>(MSize,NSize,KSize,1, inputTran_gpu, filterTran_gpu,0, gemmOutput_gpu);
-    GEMM_batch_256_128x128_KMKN<<< dim3(blockx, blocky, bat4Gemm), dim3(256,1,1)>>>(MSize,NSize,KSize,1, filterTran_gpu, inputTran_gpu,0, gemmOutput_gpu);
+    GEMM_batch_256_128x128_KMKN<<< dim3(blocky, blockx, bat4Gemm), dim3(256,1,1)>>>(NSize, MSize, KSize, 1, filterTran_gpu, inputTran_gpu, 0, gemmOutput_gpu);
     // cudaEventRecord(ts3, NULL);
     
     wino_invers_chwn_suitFor128_2<<< dim3(numOfFilter,blockn,blockn), dim3(bat4Conv,1,1)>>>(oside, MSize, NSize, gemmOutput_gpu, *output);
@@ -80,7 +80,7 @@ void wrapedConv_CHWN(int bat4Conv, int inside, int& chn, int numOfFilter, int pa
     // printf("time:%lf ms\t (%f, %f, %f, %f)\n", (total),(100*t0/total),(100*t1/total),(100*t2/total),(100*t3/total) );
 
 }
-*/
+
 
 /* // DEBUG Code
 __global__ void sumLayer(int bat4Conv,int chn, int inside, float *featureMap){
@@ -108,6 +108,7 @@ __global__ void sumVar(int batch, int MN, int k, float *featureMap){
 }
 */
 
+/*
 void wrapedConv_CHWN(int bat4Conv, int inside, int& chn, int numOfFilter, int padding, float *m1, float *m2, float ** output){
     int marginOfInputSide = (inside+2*padding-6)%4;
     bool sideCheck = ( marginOfInputSide == 0 )? true: false ;
@@ -212,7 +213,7 @@ void wrapedConv_CHWN(int bat4Conv, int inside, int& chn, int numOfFilter, int pa
     cudaFree(workSpace);
 
 }
-
+*/
 
 /*
     In this design, one thread coresponding to a tile, and the threads inside a block corresponding to each bat4Conv of a channel

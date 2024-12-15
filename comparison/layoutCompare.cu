@@ -22,7 +22,7 @@ void readAllocInit(const char* fname, int size, float** data_h, float** data_d)
         readAllocMemcpy(fname, size, data_h, data_d);
     }
 
-void BatchTesting(int opt, int bat4Conv, int inside, int chn, int numOfFilter, int padding, const char* fileName,const char* inputName);
+void BatchTesting(int opt, int bat4Conv, int inside, int chn, int numOfFilter, int padding, const char* fileName,const char* inputName, float *inputTran_gpu, float *filterTran_gpu, float *gemmOutput_gpu);
 
 int main(int argc, char *argv[]){
     // cudaSetDevice(1);
@@ -117,13 +117,20 @@ int main(int argc, char *argv[]){
 
     printf("opt:%d\n",opt);
 
+    float *inputTran_gpu, *filterTran_gpu, *gemmOutput_gpu;
+    long long nInputTran = 36*3200*64 *n;
+    long long nFilterTran = 36*512*512 *n;
+    long long nGemmOutput = 36*3200*128 *n;
+    checkCudaErrors( cudaMalloc(&inputTran_gpu,  nInputTran<<2) );
+    checkCudaErrors( cudaMalloc(&filterTran_gpu,  nFilterTran<<2) );
+    checkCudaErrors( cudaMalloc(&gemmOutput_gpu,  nGemmOutput<<2) );
     warmup<<<1,1>>>();
 
     for (int i=0;i<20;i++){
         char file_name[40];
         sprintf(file_name, "./binImage/file_%d.bin", i); //20 different file
 
-        BatchTesting(opt, n, h, c, numOfFilter, 1, filtername, file_name);
+        BatchTesting(opt, n, h, c, numOfFilter, 1, filtername, file_name, inputTran_gpu, filterTran_gpu, gemmOutput_gpu);
     }
     cudnnDestroy(handle);
     cudnnDestroyTensorDescriptor(xdesc);
@@ -133,7 +140,7 @@ int main(int argc, char *argv[]){
     return 0;
 }
 
-void BatchTesting(int opt, int bat4Conv, int side, int chn, int numOfFilter, int padding, const char * filterName, const char* inputName){
+void BatchTesting(int opt, int bat4Conv, int side, int chn, int numOfFilter, int padding, const char * filterName, const char* inputName, float *inputTran_gpu, float *filterTran_gpu, float *gemmOutput_gpu){
     int nFilter = 9 * numOfFilter * chn;
     int nInput = side*side *chn *bat4Conv;
 
@@ -171,16 +178,16 @@ void BatchTesting(int opt, int bat4Conv, int side, int chn, int numOfFilter, int
     if(opt ==0) {
         printf("Conv_NCHW\n");
         // wrapedConv_NCHW(bat4Conv, side, chn, numOfFilter, 1, srcData, filterData_d, &dstData);
-        layoutManager(DataLayout::NCHW, DataLayout::NCHW, bat4Conv, side, chn, numOfFilter, padding, srcData, filterData_d, &dstData);
+        layoutManager(DataLayout::NCHW, DataLayout::NCHW, bat4Conv, side, chn, numOfFilter, padding, srcData, filterData_d, inputTran_gpu, filterTran_gpu, gemmOutput_gpu, &dstData);
     } else if (opt ==1) {
         printf("Conv_NHWC\n");
         // wrapedConv_NHWC(bat4Conv, side, chn, numOfFilter, 1, srcData, filterData_d, &dstData);
-        layoutManager(DataLayout::NHWC, DataLayout::NHWC, bat4Conv, side, chn, numOfFilter, padding, srcData, filterData_d, &dstData);
+        layoutManager(DataLayout::NHWC, DataLayout::NHWC, bat4Conv, side, chn, numOfFilter, padding, srcData, filterData_d, inputTran_gpu, filterTran_gpu, gemmOutput_gpu, &dstData);
         // wrapedConv_NCHW(bat4Conv, side, chn, numOfFilter, 1, srcData, filterData_d, inputTran_gpu, filterTran_gpu, gemmOutput_gpu , &dstData);
     } else if (opt ==2) {
         printf("Conv_CHWN\n");
         // wrapedConv_CHWN(bat4Conv, side, chn, numOfFilter, 1, srcData, filterData_d, &dstData);
-        layoutManager(DataLayout::CHWN, DataLayout::CHWN, bat4Conv, side, chn, numOfFilter, padding, srcData, filterData_d, &dstData);
+        layoutManager(DataLayout::CHWN, DataLayout::CHWN, bat4Conv, side, chn, numOfFilter, padding, srcData, filterData_d, inputTran_gpu, filterTran_gpu, gemmOutput_gpu, &dstData);
         // wrapedConv_NCHW_3(bat4Conv, side, chn, numOfFilter, 1, srcData, filterData_d, inputTran_gpu, filterTran_gpu, gemmOutput_gpu , &dstData);
     } else if (opt ==3 || opt ==4 || opt ==5 || opt ==6) {
         printf("Conv_CuDNN\n");

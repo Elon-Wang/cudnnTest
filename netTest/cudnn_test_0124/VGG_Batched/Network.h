@@ -26,7 +26,7 @@ class network_t
     cudnnDropoutDescriptor_t dropoutDesc;
     cublasHandle_t cublasHandle;
     DataLayout modelLayout= DataLayout::NCHW;
-    // float *inputTran_gpu, *filterTran_gpu, *gemmOutput_gpu;
+    float *inputTran_gpu, *filterTran_gpu, *gemmOutput_gpu;
 
     void createHandles()
     {
@@ -453,7 +453,7 @@ class network_t
 
     // }
 
-    void convMethodChoose(const Layer_t<value_type>& conv, int& n, int& c, int& h, int& w,
+    void convMethodChoose(const Layer_t<value_type>& conv, int& n, int& c, int& h, int& w, float* inputTran_gpu, float* filterTran_gpu, float* gemmOutput_gpu,
                           value_type* srcData, value_type** dstData, bool choice, DataLayout srcLayout, DataLayout dstLaytout){
         if (choice) {
             // cudaEvent_t ts1, ts2, ts3;
@@ -469,7 +469,7 @@ class network_t
             // wrapedConv_NHWC(n, h, c, conv.outputs, 1, srcData, conv.data_d,  inputTran_gpu, filterTran_gpu, gemmOutput_gpu, dstData);
             // wrapedConv_CHWN(n, h, c, conv.outputs, 1, srcData, conv.data_d, inputTran_gpu, filterTran_gpu, gemmOutput_gpu , dstData);
 
-            layoutManager(srcLayout, dstLaytout, n, h, c, conv.outputs, 1, srcData, conv.data_d, dstData);
+            layoutManager(srcLayout, dstLaytout, n, h, c, conv.outputs, 1, srcData, conv.data_d, inputTran_gpu, filterTran_gpu, gemmOutput_gpu, dstData);
             cudaDeviceSynchronize();
             // cudaEventRecord(ts2, NULL);
             c = conv.outputs;
@@ -554,12 +554,12 @@ class network_t
         checkCudaErrors( cudaMalloc(&srcData, side * side * sizeof(value_type) * batch * 64) );
         checkCudaErrors( cudaMalloc(&dstData, side * side * sizeof(value_type) * batch * 64) );
         
-        // long long nInputTran = 36*3200*64 *batch;
-        // long long nFilterTran = 36*512*512 *batch;
-        // long long nGemmOutput = 36*3200*128 *batch;
-        // cudaMalloc((void **) &inputTran_gpu,  nInputTran<<2);
-        // cudaMalloc((void **) &filterTran_gpu, nFilterTran<<2);
-        // cudaMalloc((void **) &gemmOutput_gpu, nGemmOutput<<2);
+        long long nInputTran = 36*3200*64 *batch+1;
+        long long nFilterTran = 36*512*512 *batch;
+        long long nGemmOutput = 36*3200*128 *batch;
+        cudaMalloc((void **) &inputTran_gpu,  nInputTran<<2);
+        cudaMalloc((void **) &filterTran_gpu, nFilterTran<<2);
+        cudaMalloc((void **) &gemmOutput_gpu, nGemmOutput<<2);
 
         checkCudaErrors( cudaMemcpy(srcData, imgData_h,
                                     side * side *sizeof(value_type) * batch * chn,
@@ -600,7 +600,7 @@ class network_t
         // for (int i=0;i<5;i++){
         //     printf("%lf  ", tmp1[i]);
         // }printf("\n");
-        convMethodChoose(conv1, n, c, h, w, srcData, &dstData, testChoice, conv1.layout_in, conv1.layout_out);
+        convMethodChoose(conv1, n, c, h, w, inputTran_gpu, filterTran_gpu, gemmOutput_gpu, srcData, &dstData, testChoice, conv1.layout_in, conv1.layout_out);
         // end the loop for debug
         // std::vector<int> ret1;
         // return ret1;
@@ -615,24 +615,24 @@ class network_t
         // }printf("\n");
 
         activationForward(n, c, h, w, dstData, &srcData);
-        convMethodChoose(conv2, n, c, h, w, srcData, &dstData, testChoice, conv2.layout_in, conv2.layout_out);
+        convMethodChoose(conv2, n, c, h, w, inputTran_gpu, filterTran_gpu, gemmOutput_gpu, srcData, &dstData, testChoice, conv2.layout_in, conv2.layout_out);
 
 
 
         activationForward(n, c, h, w, dstData, &srcData);
 		poolForward(n, c, h, w, srcData, &dstData);
 
-        convMethodChoose(conv3, n, c, h, w, dstData, &srcData, testChoice, conv3.layout_in, conv3.layout_out);
+        convMethodChoose(conv3, n, c, h, w, inputTran_gpu, filterTran_gpu, gemmOutput_gpu, dstData, &srcData, testChoice, conv3.layout_in, conv3.layout_out);
         activationForward(n, c, h, w, srcData, &dstData);
-        convMethodChoose(conv4, n, c, h, w, dstData, &srcData, testChoice, conv4.layout_in, conv4.layout_out);
+        convMethodChoose(conv4, n, c, h, w, inputTran_gpu, filterTran_gpu, gemmOutput_gpu, dstData, &srcData, testChoice, conv4.layout_in, conv4.layout_out);
         activationForward(n, c, h, w, srcData, &dstData);
 		poolForward(n, c, h, w, dstData, &srcData);
 
-        convMethodChoose(conv5, n, c, h, w, srcData, &dstData, testChoice, conv5.layout_in, conv5.layout_out);
+        convMethodChoose(conv5, n, c, h, w, inputTran_gpu, filterTran_gpu, gemmOutput_gpu, srcData, &dstData, testChoice, conv5.layout_in, conv5.layout_out);
         activationForward(n, c, h, w, dstData, &srcData);
-        convMethodChoose(conv6, n, c, h, w, srcData, &dstData, testChoice, conv6.layout_in, conv6.layout_out);
+        convMethodChoose(conv6, n, c, h, w, inputTran_gpu, filterTran_gpu, gemmOutput_gpu, srcData, &dstData, testChoice, conv6.layout_in, conv6.layout_out);
         activationForward(n, c, h, w, dstData, &srcData);
-        convMethodChoose(conv7, n, c, h, w, srcData, &dstData, testChoice, conv7.layout_in, conv7.layout_out);
+        convMethodChoose(conv7, n, c, h, w, inputTran_gpu, filterTran_gpu, gemmOutput_gpu, srcData, &dstData, testChoice, conv7.layout_in, conv7.layout_out);
         activationForward(n, c, h, w, dstData, &srcData);
 		poolForward(n, c, h, w, srcData, &dstData);
 
@@ -643,26 +643,26 @@ class network_t
         //     printf("%lf  ", tmp1[i]);
         // }printf("\n");
 
-        convMethodChoose(conv8, n, c, h, w, dstData, &srcData, testChoice, conv8.layout_in, conv8.layout_out);
+        convMethodChoose(conv8, n, c, h, w, inputTran_gpu, filterTran_gpu, gemmOutput_gpu, dstData, &srcData, testChoice, conv8.layout_in, conv8.layout_out);
         activationForward(n, c, h, w, srcData, &dstData);
         // cudaMemcpy(tmp1, dstData, 5*sizeof(value_type), cudaMemcpyDeviceToHost);
         // checkCudaErrors (cudaDeviceSynchronize());
         // for (int i=0;i<5;i++){
         //     printf("%lf  ", tmp1[i]);
         // }printf("\n");
-        convMethodChoose(conv9, n, c, h, w, dstData, &srcData, testChoice, conv9.layout_in, conv9.layout_out);
+        convMethodChoose(conv9, n, c, h, w, inputTran_gpu, filterTran_gpu, gemmOutput_gpu, dstData, &srcData, testChoice, conv9.layout_in, conv9.layout_out);
         activationForward(n, c, h, w, srcData, &dstData);
-        convMethodChoose(conv10, n, c, h, w, dstData, &srcData, testChoice, conv10.layout_in, conv10.layout_out);
+        convMethodChoose(conv10, n, c, h, w, inputTran_gpu, filterTran_gpu, gemmOutput_gpu, dstData, &srcData, testChoice, conv10.layout_in, conv10.layout_out);
         activationForward(n, c, h, w, srcData, &dstData);
 		poolForward(n, c, h, w, dstData, &srcData);
 
-        convMethodChoose(conv11, n, c, h, w, srcData, &dstData, testChoice, conv11.layout_in, conv11.layout_out);
+        convMethodChoose(conv11, n, c, h, w, inputTran_gpu, filterTran_gpu, gemmOutput_gpu, srcData, &dstData, testChoice, conv11.layout_in, conv11.layout_out);
         activationForward(n, c, h, w, dstData, &srcData);
-        convMethodChoose(conv12, n, c, h, w, srcData, &dstData, testChoice, conv12.layout_in, conv12.layout_out);
+        convMethodChoose(conv12, n, c, h, w, inputTran_gpu, filterTran_gpu, gemmOutput_gpu, srcData, &dstData, testChoice, conv12.layout_in, conv12.layout_out);
         activationForward(n, c, h, w, dstData, &srcData);
         // Note, the program change the data layout to NCHW at conv13, so NHWC will get wrong result
         // convMethodChoose(conv13, n, c, h, w, srcData, &dstData, testChoice, modelLayout, modelLayout);
-        convMethodChoose(conv13, n, c, h, w, srcData, &dstData, testChoice, conv13.layout_in, conv13.layout_out);
+        convMethodChoose(conv13, n, c, h, w, inputTran_gpu, filterTran_gpu, gemmOutput_gpu, srcData, &dstData, testChoice, conv13.layout_in, conv13.layout_out);
         
         
         activationForward(n, c, h, w, dstData, &srcData);
@@ -728,9 +728,9 @@ class network_t
             printDeviceVector(n, c*h*w, dstData);
         }
 
-        // checkCudaErrors( cudaFree(inputTran_gpu));
-        // checkCudaErrors( cudaFree(filterTran_gpu));
-        // checkCudaErrors( cudaFree(gemmOutput_gpu));
+        checkCudaErrors( cudaFree(inputTran_gpu));
+        checkCudaErrors( cudaFree(filterTran_gpu));
+        checkCudaErrors( cudaFree(gemmOutput_gpu));
 
         free(imgData_h);
         checkCudaErrors( cudaFree(srcData) );

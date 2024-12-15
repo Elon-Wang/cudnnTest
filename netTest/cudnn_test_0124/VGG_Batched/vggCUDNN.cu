@@ -137,7 +137,15 @@ int main(int argc, char *argv[])
             customizedModuleChoice = false;
             vggData_path = vggData_path3;
             modelLayout = DataLayout::NHWC;
-        } else{
+        } else if (mode == 5){
+            customizedModuleChoice = false;
+            vggData_path = vggData_path0;
+            modelLayout = DataLayout::NCHW;
+        } else if (mode == 6){
+            customizedModuleChoice = false;
+            vggData_path = vggData_path3;
+            modelLayout = DataLayout::NHWC;
+        } else {
             std::cout << "Data layout not supported" << std::endl;
             exit(-1);
         }
@@ -216,12 +224,22 @@ int main(int argc, char *argv[])
             } else if (mode == 3){
                 // NCHW
                 vgg16.setDataLayout(DataLayout::NCHW);
-                sprintf(file_name, "/home/wangq/Preprocessing/DatasetPreprocessing/binImage/Batch%d/bat%d_%d.bin", n, n, i);
+                sprintf(file_name, "/home/wangq/Preprocessing/DatasetPreprocessing/binImage/Batch%d/bat%d_%d.bin", n, n, i%10);
             } else if (mode == 4){
                 // NHWC
                 vgg16.setDataLayout(DataLayout::NHWC);
                 sprintf(file_name, "/home/wangq/Preprocessing/DatasetPreprocessing/binImage/Batch%d_NHWC/bat%d_%d.bin", n, n, i);
-            } else{
+            } else if (mode == 5){
+                // Nonfused Winograd
+                vgg16.setDataLayout(DataLayout::NCHW);
+                vgg16.setConvolutionAlgorithm(CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD_NONFUSED);
+                sprintf(file_name, "/home/wangq/Preprocessing/DatasetPreprocessing/binImage/Batch%d/bat%d_%d.bin", n, n, i%10);
+            } else if (mode == 6){
+                // Nonfused Winograd
+                vgg16.setDataLayout(DataLayout::NHWC);
+                vgg16.setConvolutionAlgorithm(CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD_NONFUSED);
+                sprintf(file_name, "/home/wangq/Preprocessing/DatasetPreprocessing/binImage/Batch%d_NHWC/bat%d_%d.bin", n, n, i);
+            } else {
                 // Data layout not supported
                 std::cout << "Data layout not supported" << std::endl;
                 exit(-1);

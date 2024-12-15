@@ -5,8 +5,8 @@
 #define WARMUP
 __global__ void warmup(){}
 #endif
-// void wrapedConv_NCHW(int bat4Conv, int inside, int& chn, int numOfFilter, int padding , float *m1, float *m2, float* inputTran_gpu, float* filterTran_gpu, float* gemmOutput_gpu, float **output);
-void wrapedConv_NCHW(int bat4Conv, int inside, int& chn, int numOfFilter, int padding , float *m1, float *m2, float **output);
+void wrapedConv_NCHW(int bat4Conv, int inside, int& chn, int numOfFilter, int padding , float *m1, float *m2, float* inputTran_gpu, float* filterTran_gpu, float* gemmOutput_gpu, float **output);
+// void wrapedConv_NCHW(int bat4Conv, int inside, int& chn, int numOfFilter, int padding , float *m1, float *m2, float **output);
 __global__ void wino_input_trans_nchw_suitFor128(int side, int side_beta, int MSize, int KSize, int padding, float * pInputs, float* pOutputs, int bound);
 __global__ void wino_input_trans_nchw_suitFor128_2(int side, int side_beta, int MSize, int KSize, int padding, float * pInputs, float* pOutputs, int bound, int tileArray, int numOfBlcokn);
 __global__ void wino_kernel_trans_nchw_suitFor128(int NSize, int KSize, float * pInputs, float* pOutputs);
@@ -330,7 +330,7 @@ __global__ void sumLayer(int bat4Conv,int chn, int inside, float *featureMap){
 }
 */
 
-/* // wrapedConv_NCHW_3
+ // wrapedConv_NCHW_3
 // exchange the order of filterTran and inputTran given to the gemm
 void wrapedConv_NCHW(int bat4Conv, int inside, int& chn, int numOfFilter, int padding, float *m1, float *m2, float* inputTran_gpu, float* filterTran_gpu, float* gemmOutput_gpu, float ** output){
  
@@ -490,8 +490,8 @@ void wrapedConv_NCHW(int bat4Conv, int inside, int& chn, int numOfFilter, int pa
     // printf("m1 after free valid:%d, addr:%d\n",(*m1!=NULL), *m1);
     // cudaFree(convOutput_gpu);
 }
-*/
 
+/*
 // wrapedConv_NCHW_4
 void wrapedConv_NCHW(int bat4Conv, int inside, int& chn, int numOfFilter, int padding, float *m1, float *m2, float ** output){
  
@@ -666,7 +666,7 @@ void wrapedConv_NCHW(int bat4Conv, int inside, int& chn, int numOfFilter, int pa
     // printf("m1 after free valid:%d, addr:%d\n",(*m1!=NULL), *m1);
     // cudaFree(convOutput_gpu);
 }
-
+*/
 
 //OLD
 // one thread corresponding to one layer

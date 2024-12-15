@@ -6,7 +6,7 @@
 #include "wrapedConv_CHWN.cuh"
 
 
-void convLayoutTrans_CHWN_to_NCHW(int bat4Conv, int inside, int& chn, int numOfFilter, int padding, float *m1, float *m2, float ** output){
+void convLayoutTrans_CHWN_to_NCHW(int bat4Conv, int inside, int& chn, int numOfFilter, int padding, float *m1, float *m2, float* inputTran_gpu, float* filterTran_gpu, float* gemmOutput_gpu, float ** output){
     // CHWN to NCHW
 
     int marginOfInputSide = (inside+2*padding-6)%4;
@@ -25,18 +25,18 @@ void convLayoutTrans_CHWN_to_NCHW(int bat4Conv, int inside, int& chn, int numOfF
     int NSize = NCheck? N: ((N/128 +1) * 128);
     int KSize = KCheck? chn: ((chn/8 +1) * 8);
 
-    int nInputTran = 36 * MSize * KSize;
-    int nFilterTran = 36 * NSize * KSize;
-    int nGemmOutput = 36 * MSize*NSize;
+    // int nInputTran = 36 * MSize * KSize;
+    // int nFilterTran = 36 * NSize * KSize;
+    // int nGemmOutput = 36 * MSize*NSize;
 
-    float *workSpace, *inputTran_gpu, *filterTran_gpu, *gemmOutput_gpu;
-    long long nWorkSpace = nInputTran + nFilterTran + nGemmOutput;
+    // float *workSpace, *inputTran_gpu, *filterTran_gpu, *gemmOutput_gpu;
+    // long long nWorkSpace = nInputTran + nFilterTran + nGemmOutput;
 
-    cudaMalloc((void **) &workSpace,  nWorkSpace*sizeof(float));
+    // cudaMalloc((void **) &workSpace,  nWorkSpace*sizeof(float));
 
-    inputTran_gpu = workSpace;
-    filterTran_gpu = workSpace + nInputTran;
-    gemmOutput_gpu = workSpace + nInputTran + nFilterTran; 
+    // inputTran_gpu = workSpace;
+    // filterTran_gpu = workSpace + nInputTran;
+    // gemmOutput_gpu = workSpace + nInputTran + nFilterTran; 
 
     int blockx, blocky, bat4Gemm;
 
@@ -95,10 +95,10 @@ void convLayoutTrans_CHWN_to_NCHW(int bat4Conv, int inside, int& chn, int numOfF
     // total = t0+t1+t2+t3;
 
     // printf("time:%lf ms\t (%f, %f, %f, %f)\n", (total),(100*t0/total),(100*t1/total),(100*t2/total),(100*t3/total) );
-    cudaFree(workSpace);
+    // cudaFree(workSpace);
 }
 
-void convLayoutTrans_CHWN_to_NHWC(int bat4Conv, int inside, int& chn, int numOfFilter, int padding, float *m1, float *m2, float ** output){
+void convLayoutTrans_CHWN_to_NHWC(int bat4Conv, int inside, int& chn, int numOfFilter, int padding, float *m1, float *m2, float* inputTran_gpu, float* filterTran_gpu, float* gemmOutput_gpu, float ** output){
     int marginOfInputSide = (inside+2*padding-6)%4;
     bool sideCheck = ( marginOfInputSide == 0 )? true: false ;
     int inside_beta = sideCheck? inside +2*padding : (inside + 2*padding + 4 - marginOfInputSide);
@@ -115,18 +115,18 @@ void convLayoutTrans_CHWN_to_NHWC(int bat4Conv, int inside, int& chn, int numOfF
     int NSize = NCheck? N: ((N/128 +1) * 128);
     int KSize = KCheck? chn: ((chn/8 +1) * 8);
 
-    int nInputTran = 36 * MSize * KSize;
-    int nFilterTran = 36 * NSize * KSize;
-    int nGemmOutput = 36 * MSize*NSize;
+    // int nInputTran = 36 * MSize * KSize;
+    // int nFilterTran = 36 * NSize * KSize;
+    // int nGemmOutput = 36 * MSize*NSize;
 
-    float *workSpace, *inputTran_gpu, *filterTran_gpu, *gemmOutput_gpu;
-    long long nWorkSpace = nInputTran + nFilterTran + nGemmOutput;
+    // float *workSpace, *inputTran_gpu, *filterTran_gpu, *gemmOutput_gpu;
+    // long long nWorkSpace = nInputTran + nFilterTran + nGemmOutput;
 
-    cudaMalloc((void **) &workSpace,  nWorkSpace*sizeof(float));
+    // cudaMalloc((void **) &workSpace,  nWorkSpace*sizeof(float));
 
-    inputTran_gpu = workSpace;
-    filterTran_gpu = workSpace + nInputTran;
-    gemmOutput_gpu = workSpace + nInputTran + nFilterTran; 
+    // inputTran_gpu = workSpace;
+    // filterTran_gpu = workSpace + nInputTran;
+    // gemmOutput_gpu = workSpace + nInputTran + nFilterTran; 
 
     int blockx, blocky, bat4Gemm;
 
@@ -186,10 +186,10 @@ void convLayoutTrans_CHWN_to_NHWC(int bat4Conv, int inside, int& chn, int numOfF
     // total = t0+t1+t2+t3;
 
     // printf("time:%lf ms\t (%f, %f, %f, %f)\n", (total),(100*t0/total),(100*t1/total),(100*t2/total),(100*t3/total) );
-    cudaFree(workSpace);
+    // cudaFree(workSpace);
 }
 
-void convLayoutTrans_NHWC_to_NCHW(int bat4Conv, int inside, int& chn, int numOfFilter, int padding, float *m1, float *m2, float ** output){
+void convLayoutTrans_NHWC_to_NCHW(int bat4Conv, int inside, int& chn, int numOfFilter, int padding, float *m1, float *m2, float* inputTran_gpu, float* filterTran_gpu, float* gemmOutput_gpu, float ** output){
     int marginOfInputSide = (inside+2*padding-6)%4;
     bool sideCheck = ( marginOfInputSide == 0 )? true: false ;
     int inside_beta = sideCheck? inside +2*padding : (inside + 2*padding + 4 - marginOfInputSide);
@@ -206,12 +206,12 @@ void convLayoutTrans_NHWC_to_NCHW(int bat4Conv, int inside, int& chn, int numOfF
     int NSize = NCheck? N: ((N/128 +1) * 128);
     int KSize = KCheck? chn: ((chn/8 +1) * 8);
 
-    int nInputTran = 36 * MSize * KSize;
-    int nFilterTran = 36 * NSize * KSize;
-    int nGemmOutput = 36 * MSize*NSize;
+    // int nInputTran = 36 * MSize * KSize;
+    // int nFilterTran = 36 * NSize * KSize;
+    // int nGemmOutput = 36 * MSize*NSize;
 
-    float *workSpace, *inputTran_gpu, *filterTran_gpu, *gemmOutput_gpu;
-    long long nWorkSpace = nInputTran + nFilterTran + nGemmOutput;
+    // float *workSpace, *inputTran_gpu, *filterTran_gpu, *gemmOutput_gpu;
+    // long long nWorkSpace = nInputTran + nFilterTran + nGemmOutput;
 
     // cudaDeviceReset();
     // size_t free_memory, total_memory;
@@ -226,12 +226,12 @@ void convLayoutTrans_NHWC_to_NCHW(int bat4Conv, int inside, int& chn, int numOfF
     // }
     // cudaDeviceSynchronize();
     // CHECK_CUDA(cudaMalloc((void **) &workSpace,  nWorkSpace<<2));
-    cudaMalloc((void **) &workSpace,  nWorkSpace<<2);
-    // printf("Size of WorkSpace:%d\n",nWorkSpace);
+    // cudaMalloc((void **) &workSpace,  nWorkSpace<<2);
+    // // printf("Size of WorkSpace:%d\n",nWorkSpace);
 
-    inputTran_gpu = workSpace;
-    filterTran_gpu = workSpace + nInputTran;
-    gemmOutput_gpu = workSpace + nInputTran + nFilterTran;
+    // inputTran_gpu = workSpace;
+    // filterTran_gpu = workSpace + nInputTran;
+    // gemmOutput_gpu = workSpace + nInputTran + nFilterTran;
 
     int blockx, blocky, bat4Gemm;
 
@@ -303,10 +303,10 @@ void convLayoutTrans_NHWC_to_NCHW(int bat4Conv, int inside, int& chn, int numOfF
     // total = t0+t1+t2+t3;
 
     // printf("time:%lf ms\t (%f, %f, %f, %f)\n", (total),(100*t0/total),(100*t1/total),(100*t2/total),(100*t3/total) );
-    cudaFree(workSpace);
+    // cudaFree(workSpace);
 }
 
-void convLayoutTrans_NHWC_to_CHWN(int bat4Conv, int inside, int& chn, int numOfFilter, int padding, float *m1, float *m2, float ** output){
+void convLayoutTrans_NHWC_to_CHWN(int bat4Conv, int inside, int& chn, int numOfFilter, int padding, float *m1, float *m2, float* inputTran_gpu, float* filterTran_gpu, float* gemmOutput_gpu, float ** output){
     int marginOfInputSide = (inside+2*padding-6)%4;
     bool sideCheck = ( marginOfInputSide == 0 )? true: false ;
     int inside_beta = sideCheck? inside +2*padding : (inside + 2*padding + 4 - marginOfInputSide);
@@ -323,12 +323,12 @@ void convLayoutTrans_NHWC_to_CHWN(int bat4Conv, int inside, int& chn, int numOfF
     int NSize = NCheck? N: ((N/128 +1) * 128);
     int KSize = KCheck? chn: ((chn/8 +1) * 8);
 
-    int nInputTran = 36 * MSize * KSize;
-    int nFilterTran = 36 * NSize * KSize;
-    int nGemmOutput = 36 * MSize*NSize;
+    // int nInputTran = 36 * MSize * KSize;
+    // int nFilterTran = 36 * NSize * KSize;
+    // int nGemmOutput = 36 * MSize*NSize;
 
-    float *workSpace, *inputTran_gpu, *filterTran_gpu, *gemmOutput_gpu;
-    long long nWorkSpace = nInputTran + nFilterTran + nGemmOutput;
+    // float *workSpace, *inputTran_gpu, *filterTran_gpu, *gemmOutput_gpu;
+    // long long nWorkSpace = nInputTran + nFilterTran + nGemmOutput;
 
     // cudaDeviceReset();
     // size_t free_memory, total_memory;
@@ -343,12 +343,12 @@ void convLayoutTrans_NHWC_to_CHWN(int bat4Conv, int inside, int& chn, int numOfF
     // }
     // cudaDeviceSynchronize();
     // CHECK_CUDA(cudaMalloc((void **) &workSpace,  nWorkSpace<<2));
-    cudaMalloc((void **) &workSpace,  nWorkSpace<<2);
-    // printf("Size of WorkSpace:%d\n",nWorkSpace);
+    // cudaMalloc((void **) &workSpace,  nWorkSpace<<2);
+    // // printf("Size of WorkSpace:%d\n",nWorkSpace);
 
-    inputTran_gpu = workSpace;
-    filterTran_gpu = workSpace + nInputTran;
-    gemmOutput_gpu = workSpace + nInputTran + nFilterTran;
+    // inputTran_gpu = workSpace;
+    // filterTran_gpu = workSpace + nInputTran;
+    // gemmOutput_gpu = workSpace + nInputTran + nFilterTran;
 
     int blockx, blocky, bat4Gemm;
 
@@ -412,10 +412,10 @@ void convLayoutTrans_NHWC_to_CHWN(int bat4Conv, int inside, int& chn, int numOfF
     
 
     cudaDeviceSynchronize();
-
+    // cudaFree(workSpace);
 }
 
-void convLayoutTrans_NCHW_to_NHWC(int bat4Conv, int inside, int& chn, int numOfFilter, int padding, float *m1, float *m2, float ** output){
+void convLayoutTrans_NCHW_to_NHWC(int bat4Conv, int inside, int& chn, int numOfFilter, int padding, float *m1, float *m2, float* inputTran_gpu, float* filterTran_gpu, float* gemmOutput_gpu, float ** output){
     int marginOfInputSide = (inside+2*padding-6)%4;
     bool sideCheck = ( marginOfInputSide == 0 )? true: false ;
     int inside_beta = sideCheck? inside +2*padding : (inside + 2*padding + 4 - marginOfInputSide);
@@ -438,18 +438,18 @@ void convLayoutTrans_NCHW_to_NHWC(int bat4Conv, int inside, int& chn, int numOfF
     int nInput = bat4Conv * inside * inside * (chn) +1;
     // int nFilter = 9 * numOfFilter * chn;
 
-    int nInputTran = 36 * MSize * KSize;
-    int nFilterTran = 36 * NSize * KSize;
-    int nGemmOutput = 36 * MSize*NSize;
+    // int nInputTran = 36 * MSize * KSize;
+    // int nFilterTran = 36 * NSize * KSize;
+    // int nGemmOutput = 36 * MSize*NSize;
 
-    float *workSpace, *inputTran_gpu, *filterTran_gpu, *gemmOutput_gpu;
-    long long nWorkSpace = nInputTran + nFilterTran + nGemmOutput;
+    // float *workSpace, *inputTran_gpu, *filterTran_gpu, *gemmOutput_gpu;
+    // long long nWorkSpace = nInputTran + nFilterTran + nGemmOutput;
 
-    cudaMalloc((void **) &workSpace,  nWorkSpace<<2);
+    // cudaMalloc((void **) &workSpace,  nWorkSpace<<2);
 
-    inputTran_gpu = workSpace;
-    filterTran_gpu = workSpace + nInputTran;
-    gemmOutput_gpu = workSpace + nInputTran + nFilterTran; 
+    // inputTran_gpu = workSpace;
+    // filterTran_gpu = workSpace + nInputTran;
+    // gemmOutput_gpu = workSpace + nInputTran + nFilterTran; 
 
     int blocky, blockx, bat4Gemm;
     // int nGemmOutput;
@@ -496,10 +496,10 @@ void convLayoutTrans_NCHW_to_NHWC(int bat4Conv, int inside, int& chn, int numOfF
     // total = t0+t1+t2+t3;
 
     // printf("time:%lf ms\t (%f, %f, %f, %f)\n", (total),(100*t0/total),(100*t1/total),(100*t2/total),(100*t3/total) );
-    cudaFree(workSpace);
+    // cudaFree(workSpace);
 }
 
-void convLayoutTrans_NCHW_to_CHWN(int bat4Conv, int inside, int& chn, int numOfFilter, int padding, float *m1, float *m2, float ** output){
+void convLayoutTrans_NCHW_to_CHWN(int bat4Conv, int inside, int& chn, int numOfFilter, int padding, float *m1, float *m2, float* inputTran_gpu, float* filterTran_gpu, float* gemmOutput_gpu, float ** output){
         int marginOfInputSide = (inside+2*padding-6)%4;
     bool sideCheck = ( marginOfInputSide == 0 )? true: false ;
     int inside_beta = sideCheck? inside +2*padding : (inside + 2*padding + 4 - marginOfInputSide);
@@ -522,18 +522,18 @@ void convLayoutTrans_NCHW_to_CHWN(int bat4Conv, int inside, int& chn, int numOfF
     int nInput = bat4Conv * inside * inside * (chn) +1;
     // int nFilter = 9 * numOfFilter * chn;
 
-    int nInputTran = 36 * MSize * KSize;
-    int nFilterTran = 36 * NSize * KSize;
-    int nGemmOutput = 36 * MSize*NSize;
+    // int nInputTran = 36 * MSize * KSize;
+    // int nFilterTran = 36 * NSize * KSize;
+    // int nGemmOutput = 36 * MSize*NSize;
 
-    float *workSpace, *inputTran_gpu, *filterTran_gpu, *gemmOutput_gpu;
-    long long nWorkSpace = nInputTran + nFilterTran + nGemmOutput;
+    // float *workSpace, *inputTran_gpu, *filterTran_gpu, *gemmOutput_gpu;
+    // long long nWorkSpace = nInputTran + nFilterTran + nGemmOutput;
 
-    cudaMalloc((void **) &workSpace,  nWorkSpace<<2);
+    // cudaMalloc((void **) &workSpace,  nWorkSpace<<2);
 
-    inputTran_gpu = workSpace;
-    filterTran_gpu = workSpace + nInputTran;
-    gemmOutput_gpu = workSpace + nInputTran + nFilterTran; 
+    // inputTran_gpu = workSpace;
+    // filterTran_gpu = workSpace + nInputTran;
+    // gemmOutput_gpu = workSpace + nInputTran + nFilterTran; 
 
     int blocky, blockx, bat4Gemm;
     // int nGemmOutput;
@@ -580,7 +580,7 @@ void convLayoutTrans_NCHW_to_CHWN(int bat4Conv, int inside, int& chn, int numOfF
     // total = t0+t1+t2+t3;
 
     // printf("time:%lf ms\t (%f, %f, %f, %f)\n", (total),(100*t0/total),(100*t1/total),(100*t2/total),(100*t3/total) );
-    cudaFree(workSpace);
+    // cudaFree(workSpace);
 }
 
 // 定义数据布局枚举类型
@@ -601,19 +601,22 @@ void layoutManager(
     int padding,
     float *input,
     float *weights,
+    float *inputTran_gpu,
+    float *filterTran_gpu,
+    float *gemmOutput_gpu,
     float **output
 ) {
     if(srcLayout == dstLayout) {
         // 相同布局直接调用对应的卷积函数
         switch(srcLayout) {
             case DataLayout::NCHW:
-                wrapedConv_NCHW(bat4Conv, inside, chn, numOfFilter, padding, input, weights, output);
+                wrapedConv_NCHW(bat4Conv, inside, chn, numOfFilter, padding, input, weights, inputTran_gpu, filterTran_gpu, gemmOutput_gpu, output);
                 break;
             case DataLayout::NHWC:
-                wrapedConv_NHWC(bat4Conv, inside, chn, numOfFilter, padding, input, weights, output);
+                wrapedConv_NHWC(bat4Conv, inside, chn, numOfFilter, padding, input, weights, inputTran_gpu, filterTran_gpu, gemmOutput_gpu, output);
                 break;
             case DataLayout::CHWN:
-                wrapedConv_CHWN(bat4Conv, inside, chn, numOfFilter, padding, input, weights, output);
+                wrapedConv_CHWN(bat4Conv, inside, chn, numOfFilter, padding, input, weights, inputTran_gpu, filterTran_gpu, gemmOutput_gpu, output);
                 break;
         }
         return;
@@ -623,25 +626,25 @@ void layoutManager(
     switch(srcLayout) {
         case DataLayout::CHWN:
             if(dstLayout == DataLayout::NCHW) {
-                convLayoutTrans_CHWN_to_NCHW(bat4Conv, inside, chn, numOfFilter, padding, input, weights, output);
+                convLayoutTrans_CHWN_to_NCHW(bat4Conv, inside, chn, numOfFilter, padding, input, weights, inputTran_gpu, filterTran_gpu, gemmOutput_gpu, output);
             } else {
-                convLayoutTrans_CHWN_to_NHWC(bat4Conv, inside, chn, numOfFilter, padding, input, weights, output);
+                convLayoutTrans_CHWN_to_NHWC(bat4Conv, inside, chn, numOfFilter, padding, input, weights, inputTran_gpu, filterTran_gpu, gemmOutput_gpu, output);
             }
             break;
             
         case DataLayout::NCHW:
             if(dstLayout == DataLayout::CHWN) {
-                convLayoutTrans_NCHW_to_CHWN(bat4Conv, inside, chn, numOfFilter, padding, input, weights, output);
+                convLayoutTrans_NCHW_to_CHWN(bat4Conv, inside, chn, numOfFilter, padding, input, weights, inputTran_gpu, filterTran_gpu, gemmOutput_gpu, output);
             } else {
-                convLayoutTrans_NCHW_to_NHWC(bat4Conv, inside, chn, numOfFilter, padding, input, weights, output);
+                convLayoutTrans_NCHW_to_NHWC(bat4Conv, inside, chn, numOfFilter, padding, input, weights, inputTran_gpu, filterTran_gpu, gemmOutput_gpu, output);
             }
             break;
             
         case DataLayout::NHWC:
             if(dstLayout == DataLayout::NCHW) {
-                convLayoutTrans_NHWC_to_NCHW(bat4Conv, inside, chn, numOfFilter, padding, input, weights, output);
+                convLayoutTrans_NHWC_to_NCHW(bat4Conv, inside, chn, numOfFilter, padding, input, weights, inputTran_gpu, filterTran_gpu, gemmOutput_gpu, output);
             } else {
-                convLayoutTrans_NHWC_to_CHWN(bat4Conv, inside, chn, numOfFilter, padding, input, weights, output);
+                convLayoutTrans_NHWC_to_CHWN(bat4Conv, inside, chn, numOfFilter, padding, input, weights, inputTran_gpu, filterTran_gpu, gemmOutput_gpu, output);
             }
             break;
     }

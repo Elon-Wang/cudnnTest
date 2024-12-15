@@ -5,8 +5,8 @@
 #define WARMUP
 __global__ void warmup(){}
 #endif
-// void wrapedConv_NHWC(int bat4Conv, int inside, int& chn, int numOfFilter, int padding , float *m1, float *m2, float* inputTran_gpu, float* filterTran_gpu, float* gemmOutput_gpu, float **output);
-void wrapedConv_NHWC(int bat4Conv, int inside, int& chn, int numOfFilter, int padding , float *m1, float *m2, float **output);
+void wrapedConv_NHWC(int bat4Conv, int inside, int& chn, int numOfFilter, int padding , float *m1, float *m2, float* inputTran_gpu, float* filterTran_gpu, float* gemmOutput_gpu, float **output);
+//void wrapedConv_NHWC(int bat4Conv, int inside, int& chn, int numOfFilter, int padding , float *m1, float *m2, float **output);
 __global__ void wino_input_trans_nhwc_suitFor128(int side, int side_beta, int MSize, int KSize, int padding, float * pInputs, float* pOutputs );
 __global__ void wino_kernel_trans_nhwc_suitFor128(int NSize, int KSize, float * pInputs, float* pOutputs);
 __global__ void wino_invers_nhwc_suitFor128(int oside, int MSize, int NSize, float* pInputs, float* pOutputs);
@@ -21,7 +21,6 @@ __global__ void wino_invers_nhwc_suitFor128(int oside, int MSize, int NSize, flo
 //     }                                                                    \
 // } while(0)
 
-/*
 void wrapedConv_NHWC(int bat4Conv, int inside, int& chn, int numOfFilter, int padding, float *m1, float *m2, float* inputTran_gpu, float* filterTran_gpu, float* gemmOutput_gpu, float ** output){
     // int nInput = 64*128*128;
     // float *output1 =(float *)malloc(nInput * sizeof(float));
@@ -111,9 +110,9 @@ void wrapedConv_NHWC(int bat4Conv, int inside, int& chn, int numOfFilter, int pa
     // printf("time:%lf ms\t (%f, %f, %f, %f)\n", (total),(100*t0/total),(100*t1/total),(100*t2/total),(100*t3/total) );
 
 }
-*/
 
 
+/* 
 void wrapedConv_NHWC(int bat4Conv, int inside, int& chn, int numOfFilter, int padding, float *m1, float *m2, float ** output){
     // int nInput = 64*128*128;
     // float *output1 =(float *)malloc(nInput * sizeof(float));
@@ -254,6 +253,7 @@ void wrapedConv_NHWC(int bat4Conv, int inside, int& chn, int numOfFilter, int pa
     // printf("time:%lf ms\t (%f, %f, %f, %f)\n", (total),(100*t0/total),(100*t1/total),(100*t2/total),(100*t3/total) );
 
 }
+*/
 
 
 /*
